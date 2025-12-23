@@ -32,7 +32,8 @@ if (interactive()) {
 
 }
 
-sample_metadata = read.csv('~/park_dglodzik/data_repo//PanCan/WGS.metadata.txt', sep='\t')
+pcawg_muts_folder <- '/home/dg204/park_data/ICGC/SNV_indel_calls/final_consensus_12oct_passonly/snv_mnv/'
+sample_metadata = read.csv('../data/interim//WGS.metadata.txt', sep='\t')
 sample_metadata <- subset(sample_metadata, !duplicated(icgc_specimen_id))
 
 exp.name <- paste0('PCAWG_', svclass,'_',size_min, '_', as.integer(size_max), '_', max_sig) 
@@ -64,26 +65,26 @@ suppressWarnings(library(regioneR))
 library(stringr)
 library(lmtest)
 library(MASS)
-source('~/repos/hotspots/R/utils/plotCoefficients.R')
-source('~/repos/hotspots/R/utils/prepareBinData.R')
+source('utils/plotCoefficients.R')
+source('utils/prepareBinData.R')
 library(signature.tools.lib)
 library(plyr)
 library(readxl)
 require(MutationTimeR) #
 library(reshape2)
 options(repr.matrix.max.cols=200, repr.matrix.max.rows=100)
-source('~/projects/rsignatures/src/utils/performSVOverlaps.R')
+source('utils/performSVOverlaps.R')
 
 #notebooks/signature calc/rearr_catalogue
-load('~/projects/rsignatures//data/processed/sample.rearrs.RData')
+load('../data/interim//sample.rearrs.RData')
 
 # SBS signatures and exposures
-pcawg_attributions <- read.csv('~/park_dglodzik/data_repo/PanCan/repertoire of signatures/attributions/SigProfilier_PCAWG_WGS_probabilities_SBS.csv')
+pcawg_attributions <- read.csv('../data/interim/SigProfilier_PCAWG_WGS_probabilities_SBS.csv')
 pcawg_attributions$context <- paste0(substr(pcawg_attributions$Mutation.Subtype,1,1), '[', pcawg_attributions$Mutation.Type, ']', substr(pcawg_attributions$Mutation.Subtype,3,3))
 pcawg_attributions$max_sig<-colnames(pcawg_attributions[,5:(ncol(pcawg_attributions)-1)])[apply(pcawg_attributions[,5:(ncol(pcawg_attributions)-1)],1,which.max)]
 pcawg_attributions$max_prob <- apply(pcawg_attributions[,5:(ncol(pcawg_attributions)-2)],1,max)
-pcawg_exposures <- read.csv('~/park_dglodzik/data_repo/PanCan/repertoire of signatures/signatures_in_samples/PCAWG_sigProfiler_SBS_signatures_in_samples.csv')
-rs_exposures <- as.data.frame(read_excel('~/park_dglodzik/data_repo//PanCan//PCAWG Andrea//43018_2020_27_MOESM3_ESM.xlsx', sheet='S7'))
+pcawg_exposures <- read.csv('../data/interim/PCAWG_sigProfiler_SBS_signatures_in_samples.csv')
+rs_exposures <- as.data.frame(read_excel('../data/interim/43018_2020_27_MOESM3_ESM.xlsx', sheet='S7'))
 rownames(rs_exposures) <- rs_exposures[,1]
 colnames(rs_exposures)[1] <- 'sample'
 rs_exposures$sample <- NULL
@@ -92,7 +93,7 @@ test.samples.df.sinatures <- merge(test.samples.df, pcawg_exposures, by.x = 'icg
 test.samples.df.sinatures.abobec <- merge(test.samples.df.sinatures, rs_exposures, by.x='aliquot_id', by.y=0)
 if (!is.null(sample_subset)) {
     if (sample_subset=='CCNE1') {
-        ccne.samples.df <- read.csv('~/projects/rsignatures/data/processed/CCNE1.amp.sample.csv')
+        ccne.samples.df <- read.csv('../data/interim/CCNE1.amp.sample.csv')
         test.samples.df.sinatures.abobec <- subset(test.samples.df.sinatures.abobec, aliquot_id %in% ccne.samples.df$aliquot_id)
     } else if (sample_subset=='CDK12') {
         curated_cdk12 <- c('0009b464-b376-4fbc-8a56-da538269a02f',
@@ -105,7 +106,7 @@ if (!is.null(sample_subset)) {
                   )
         test.samples.df.sinatures.abobec <- subset(test.samples.df.sinatures.abobec, aliquot_id %in% curated_cdk12)
     } else if (sample_subset=='HRD'){
-        hrd_brca_loh <- read.table('~/projects/rsignatures/data/processed/BRCA_and_LOH_PCAWG.tsv', header=TRUE)
+        hrd_brca_loh <- read.table('../data/interim/BRCA_and_LOH_PCAWG.tsv', header=TRUE)
         test.samples.df.sinatures.abobec <- subset(test.samples.df.sinatures.abobec, aliquot_id %in% hrd_brca_loh$aliquot_id)
     }    
 }
@@ -116,7 +117,7 @@ print(paste(nrow(test.samples.df.sinatures.abobec), 'samples after  filtering'))
 
 
 
-mapability <- read.table('~/repos/hotspots//data/breastData/hg19CRG.100bp/hg19.CRC.100mer.bed')
+mapability <- read.table('../data/interim/hg19.CRC.100mer.bed')
 mapability.gr <- trim(reduce(GRanges(seqnames=Rle(mapability$V1),
                                   ranges=IRanges(mapability$V2, mapability$V3),seqinfo= seqinfo(BSgenome.Hsapiens.UCSC.hg19))))
 
@@ -167,7 +168,7 @@ for (si in 1:nrow(test.samples.df.sinatures.abobec)) {
             #print('file not found')
         }
     } else {
-        sample_muts <- vcfToSNVcatalogue(paste0('/home/dg204/park_data/ICGC/SNV_indel_calls/final_consensus_12oct_passonly/snv_mnv/',sample_id,'.consensus.20160830.somatic.snv_mnv.vcf.gz'))
+        sample_muts <- vcfToSNVcatalogue(paste0(pcawg_muts_folder,sample_id,'.consensus.20160830.somatic.snv_mnv.vcf.gz'))
         muts_df <- sample_muts$muts
         muts_df$max_sig <- pcawg_attributions_si[muts_df$context,'max_sig']
         muts_df$max_prob <- pcawg_attributions_si[muts_df$context,'max_prob']        

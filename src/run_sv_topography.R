@@ -1,38 +1,6 @@
 if (interactive()) {
-    # I did not get it to work for RS2, RS6a
-    #exp.name <- 'non_clustered'
-    #filter_str <- " (is.clustered==FALSE)"
     exp.name <- 'RS1'
     filter_str <- "max.Ref.Sig=='Ref.Sig.R1'  & (is.clustered==FALSE)"
-    #exp.name <- 'RS2'
-    #filter_str <- "max.Ref.Sig=='Ref.Sig.R2'"
-    #exp.name <- 'RS6a'
-    #filter_str <- "max.Ref.Sig=='Ref.Sig.R6a'"
-    #exp.name <- 'RS6b'
-    #filter_str <- "max.Ref.Sig=='Ref.Sig.R6b'"
-    
-    #exp.name <- 'RS8'
-    #filter_str <- "max.Ref.Sig=='Ref.Sig.R8'  & (is.clustered==FALSE)"
-    #exp.name <- 'RS3'
-    #filter_str <- "max.Ref.Sig=='Ref.Sig.R3'  & (is.clustered==FALSE) "
-    #exp.name <- 'R7'
-    #filter_str <- "max.Ref.Sig=='Ref.Sig.R7'  & (is.clustered==FALSE) "
-    #exp.name <- 'cdk12_dups'
-    #filter_str <- "sample %in% curated_cdk12 & label2=='_tds' & is.clustered==FALSE  & length < 5e6 & length >1e5"
-    #exp.name <- 'ccne1_dups'
-    #filter_str <- "(sample %in% ccne.samples.df$aliquot_id) & label2=='_tds' & is.clustered==FALSE  & length < 5e6 & length >1e5"
-    #exp.name <- 'RS11'
-    #filter_str <- "max.Ref.Sig=='Ref.Sig.R11'  & (is.clustered==FALSE)"    
-    #exp.name <- 'RS15'
-    #filter_str <- "max.Ref.Sig=='Ref.Sig.R15'  & (is.clustered==FALSE)"    
-    #exp.name <- 'RS1_esophagus'
-    #filter_str <- "max.Ref.Sig=='Ref.Sig.R1' & label2=='_tds'& V15=='Esophagus'"   
-    #exp.name <- 'RS1_bone'
-    #filter_str <- "max.Ref.Sig=='Ref.Sig.R1' & label2=='_tds'& V15=='Bone/SoftTissue'"
-    
-    #exp.name <- 'cdk12_dups_shorter'
-    #filter_str <- "sample %in% curated_cdk12 & label2=='_tds' & is.clustered==FALSE  & length < 1e6 & length >1e5
-    
     shuffle <- FALSE
     shuffleMode <- 'simple'
     doRegression <- FALSE
@@ -74,7 +42,7 @@ if (shuffle==TRUE) {
     exp.name <- paste0(exp.name, '_shuffle_', shuffleMode)
 }
 
-result_folder <- paste0('/home/dg204/park_dglodzik/svig/', exp.name, '/')
+result_folder <- paste0('../data/processed/', exp.name, '/')
 if (!dir.exists(result_folder)) {
   dir.create(result_folder)
 }
@@ -91,30 +59,36 @@ library(lmtest)
 library(MASS)
 library(stringr)
 library(rhdf5)
-source('~/repos/hotspots/R/utils/prepareBinData.R')
-source('~/projects/rsignatures/src/utils/evalExprOverlap.R')
-source('~/projects/rsignatures/src/utils/evalGCOverlap.R')
-source('~/projects/rsignatures/./src/utils/qcut.R')
-source('~/projects/rsignatures//src/utils/bins_sv_overlaps.R')
-source('~/projects/rsignatures//src/utils/rs_gene_overlaps.R')
-source('~/projects/rsignatures//src/utils/normalizeVector.R')
-source('~/projects/rsignatures//src/utils/getBpGr.R')
-source('~/projects/rsignatures//src/utils/performOverlaps.R')
-source('~/projects/rsignatures//src/utils/getBpGr.R')
-source('~/projects/rsignatures//src/utils/loadRepeats.R')
-source('~/projects/rsignatures/src/utils/plotSignature.R')
-source('~/projects/rsignatures/src/utils/getCategs.R')
-source('~/repos/hotspots/R/utils/plotCoefficients.R')
+source('../utils/prepareBinData.R')
+source('../utils/evalExprOverlap.R')
+source('../utils/evalGCOverlap.R')
+source('../utils/qcut.R')
+source('../bins_sv_overlaps.R')
+source('../utils/rs_gene_overlaps.R')
+source('../utils/normalizeVector.R')
+source('../utils/getBpGr.R')
+source('../utils/performOverlaps.R')
+source('../utils/getBpGr.R')
+source('../utils/loadRepeats.R')
+source('../utils/plotSignature.R')
+source('../utils/getCategs.R')
+source('../utils/plotCoefficients.R')
+
+# loads reference gene expression files
+source('../utils/loadGRs.R')
+
+expr_tissue <- 'BRCA'
+
 # this is where the results will be stored
 resultList <- list()
-sample_metadata = read.csv('~/park_dglodzik/data_repo/PanCan/WGS.metadata.txt', sep='\t')
+sample_metadata = read.csv('../data/interim/WGS.metadata.txt', sep='\t')
 sample_metadata <- subset(sample_metadata, !duplicated(icgc_specimen_id))
 rownames(sample_metadata) <- sample_metadata$aliquot_id
-specimen_hist <- read.table('~/park_dglodzik/data_repo/PanCan//pcawg_specimen_histology_August2016_v7.tsv', sep='\t', header=FALSE)
+specimen_hist <- read.table('../data/interim/pcawg_specimen_histology_August2016_v7.tsv', sep='\t', header=FALSE)
 sample_metadata.m <- merge(sample_metadata, specimen_hist, by.x='icgc_sample_id', by.y='V6')
 rownames(sample_metadata.m) <- sample_metadata.m$aliquot_id
 # load the reference data
-replis.gr <- toGRanges('~/projects/rsignatures/data//external/BASIS/Repliseq_data//RepliTime/MCF7_data//MCF7_RepliSeq.bedGraph')
+replis.gr <- toGRanges('../data/interim/MCF7_RepliSeq.bedGraph')
 replis.gr <- replis.gr[lengths(replis.gr)<=1001]
 replis.gr$chr.len<- seqlengths(BSgenome.Hsapiens.UCSC.hg19)[as.character(seqnames(replis.gr))]
 replis.gr<-replis.gr[(start(replis.gr)>chr.margin) & ((replis.gr$chr.len - end(replis.gr))>chr.margin)]
@@ -122,7 +96,7 @@ replis.gr<-replis.gr[(start(replis.gr)>chr.margin) & ((replis.gr$chr.len - end(r
 replis.gr$quantile <- qcut(replis.gr$V4, 10)
 # Prepare replication origins, SNS-seq
 
-core.origins <- read.table('~/projects/rsignatures/data/external/origins/akerman_core_origins_hg19.bed', sep='\t')
+core.origins <- read.table('../data/interim/akerman_core_origins_hg19.bed', sep='\t')
 core.origins$midopoint <- rowMeans(core.origins[,c('V2', 'V3')])
 common.origins.gr <- GRanges(seqnames=Rle(core.origins$V1),
                   ranges=IRanges(core.origins$midopoint, core.origins$midopoint))
@@ -139,13 +113,13 @@ common.origins.1Mb.gr <- GRanges(seqnames=Rle(core.origins$V1),
                   ranges=IRanges(core.origins$leftMargin, core.origins$rightMargin))
 
 # repeats
-repeat_fn <- '/home/dg204/park_dglodzik/ref/repeats/hg19/rmsk.txt.gz'
+repeat_fn <- '../data/interim/rmsk.txt.gz'
 #repeats.gr <- loadRepeats(repeat_fn)
 #save(repeats.gr, file='~/projects/rsignatures/data/processed/repeats.gr.RData')
-load('~/projects/rsignatures/data/processed/repeats.gr.RData')
+load('../data/interim/repeats.gr.RData')
 
 # sample groups of interest
-ccne.samples.df <- read.csv('~/projects/rsignatures/data/processed/CCNE1.amp.sample.csv')
+ccne.samples.df <- read.csv('../data/interim/CCNE1.amp.sample.csv')
 curated_cdk12 <- c('0009b464-b376-4fbc-8a56-da538269a02f',
                   '84ca6ab0-9edc-4636-9d27-55cdba334d7d',
                   'b243adb4-b3e7-4e0e-bc0d-625aa8dbb1be',
@@ -154,13 +128,13 @@ curated_cdk12 <- c('0009b464-b376-4fbc-8a56-da538269a02f',
                    '36d1a85e-a09b-4537-86e0-eaf1eb03aed8',
                    '0bfd1043-816e-e3e4-e050-11ac0c4860c5' # this one has two hits
                   )
-hrd_brca_loh <- read.table('~/projects/rsignatures/data/processed/BRCA_and_LOH_PCAWG.tsv', header=TRUE)
+hrd_brca_loh <- read.table('../data/interim/BRCA_and_LOH_PCAWG.tsv', header=TRUE)
 
 
 # end of references
 # load the sample RS signature attributions
 # load the bedpe file 
-load('~/projects/rsignatures//data/processed/sample.rearrs.RData')
+load('../data/interim/sample.rearrs.RData')
 # the the notebooks: rs.ipynb and rearr_catalogues.ipynb
 length(sample.rearrs)
 all.rearrs <- do.call('rbind',sample.rearrs)
@@ -215,29 +189,8 @@ if (shuffle) {
         test.bedpe$start1[rightFlag] <- test.bedpe$start2[rightFlag] 
         test.bedpe$start2[rightFlag] <- test.bedpe$start2[rightFlag] + test.bedpe$length[rightFlag]
 
-        
-    } else {
-        # obsolete: shuffling while preserving repliseq distribution
-        #shuffle_right <- sample(c(TRUE, FALSE), size=nrow(test.bedpe), replace=TRUE)
-        shuffle_right <- abs(test.bedpe$repliseq.sim.right - test.bedpe$repliseq.actual ) < abs(test.bedpe$repliseq.sim.left - test.bedpe$repliseq.actual )
-        shuffle_right[is.na(shuffle_right)] <- sample(c(TRUE, FALSE), size=sum(is.na(shuffle_right)), replace=TRUE)
-        
-        test.bedpe$start1[not_transloc&shuffle_right] <- test.bedpe$start2[not_transloc&shuffle_right]
-        test.bedpe$start2[not_transloc&shuffle_right] <- test.bedpe$start1[not_transloc&shuffle_right] + 
-        test.bedpe$length[not_transloc&shuffle_right]
-        test.bedpe$repliseq.new[not_transloc&shuffle_right] <- test.bedpe$repliseq.sim.right[not_transloc&shuffle_right]
-    
-        test.bedpe$start2[not_transloc&!shuffle_right] <- test.bedpe$start1[not_transloc&!shuffle_right]
-        test.bedpe$start1[not_transloc&!shuffle_right] <- test.bedpe$start2[not_transloc&!shuffle_right] - 
-        test.bedpe$length[not_transloc&!shuffle_right]
-        test.bedpe$repliseq.new[not_transloc&!shuffle_right] <- test.bedpe$repliseq.sim.left[not_transloc&!shuffle_right]
-    } 
-
-
-        
     test.bedpe <- subset(test.bedpe, start2 < (chr2.len-2*chr.margin))
     test.bedpe <- test.bedpe[order(test.bedpe$repliseq.new),]
-    # hist(subset(test.bedpe,chrom1==1)$start1)
     # maybe uneven repliseq profile results from chromosome distribution?
 }
 
@@ -540,7 +493,7 @@ if (makePDFs) {
 
 # gene expression analysis
 # expr.m, disease.m
-load('~/projects//rsignatures/data/processed/disease.RData')
+load('../data/interim/disease.RData')
 cancer_types_tab <- table(gsub('-.*', '', test.bedpe$dcc_project_code))
 cancer_types_tab <- cancer_types_tab[names(cancer_types_tab) %in% colnames(disease.m)]
 if (length(cancer_types_tab)>0) {
@@ -552,7 +505,7 @@ if (length(cancer_types_tab)>0) {
 
 # load the genes
 print(paste('Tissue for expression analysis:', expr.tissue))
-gene.table.fn <- '~/repos/hotspots/data/genes.table.csv'
+gene.table.fn <- '../data/interim/genes.table.csv'
 genes.table <- as.data.frame(read.csv(gene.table.fn, row.names=NULL)[,2:7])
 disease.df <- as.data.frame(disease.m)
 disease.df$ensid <- gsub('\\..*', '', rownames(disease.m))
@@ -696,8 +649,7 @@ rownames(test.bedpe) <- test.bedpe$sv_id_global
 bps.temp.gr <- getBpGr(test.bedpe)
 nrow(test.bedpe)
 
-expr_tissue <- 'BRCA'
-source('~/projects/rsignatures//src/utils/loadGRs.R')
+
 
 bps.temp.gr <- getBpGr(test.bedpe)
 ovl_r <- performOverlaps(test.bedpe, bps.temp.gr, replis.gr, rfd.gr, genes.gr )
@@ -773,7 +725,7 @@ if (doRegression) {
                    data.frame(chr=test.bedpe$chrom2, position=test.bedpe$start2, position=test.bedpe$start1)
                )
     
-    load('~/repos/hotspots//data/bins.regression.1000_OV.RData')
+    load('../data/interim/bins.regression.1000_OV.RData')
     # in future runs, model.variables and 
     #model.variables <- colnames(allBins)[ 4:ncol(allBins)]
     model.variables <- model.variables[-which(model.variables=='meanCn' | model.variables=='gaps'  )]
@@ -834,7 +786,7 @@ save(resultList, file=paste0(result_folder, 'stats_light_',exp.name,'.RData'))
 # mh analysis
 # microhomology analysis based on Hartwig data
 # 
-load('~/projects/rsignatures//data/processed/sample.rearrs.hartwig.RData')
+load('../data/interim/sample.rearrs.hartwig.RData')
 all.rearrs.m <- merge(sample.rearrs.df, sample_metadata.m, by.x='sample', by.y='aliquot_id', all.x=TRUE)
 eval(parse(text = paste('test.bedpe <- subset(all.rearrs.m,', filter_str,')')))
 
