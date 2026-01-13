@@ -1,4 +1,37 @@
 #!/bin/bash
+#===============================================================================
+# Purpose:
+#   Run APOBEC overlap analysis for one parameter set defined in overlapConfigsSigs2.csv.
+#   This script is designed to run as a Slurm job array, where each task reads
+#   a specific line from the CSV config file and runs run_overlaps.R with those parameters.
+#
+# Inputs:
+#   - overlapConfigsSigs2.csv : parameter table (one run per line)
+#       Expected columns (comma-separated):
+#         1) SVCLASS
+#         2) SIZE_MIN
+#         3) SIZE_MAX
+#         4) MAX_SIG
+#         5) (unused here)
+#         6) SAMPLE_SUBSET
+#
+# Work script (R)
+#   - run_overlaps.R : performs the overlap computation and writes results
+#
+# Outputs:
+#   - ../data/processed/APOBEC/ : output directory for overlap results
+#   - log/overlaps_<jobid>_<taskid>.out : STDOUT log
+#   - log/overlaps_<jobid>_<taskid>.err : STDERR log
+#
+# Usage:
+#   sbatch <this_script>.sh
+#
+# Notes:
+#   - SLURM_ARRAY_TASK_ID is used as the CSV line number to read.
+#   - After the array finishes, summarize results using:
+#       notebooks/APOBEC/muts_dups_signatures_summary.ipynb
+#===============================================================================
+
 #SBATCH -c 8                               # Request 16 cores
 #SBATCH -t 0-2:05                         # Runtime in D-HH:MM format
 #SBATCH -A park
@@ -9,16 +42,15 @@
 #SBATCH --array=32-33                                     # 1-15 for channels, 1-21 for signatures
 
 
-#module load gcc/9.2.0 python/3.10.11 R/4.3.1
-#module load samtools
-#export R_LIBS_USER="~/R-4.3.1-IRkernel/library"
-
 module load gcc/14.2.0 python/3.13.1 R/4.4.2
 module load samtools
 export R_LIBS_USER="~/park_dglodzik/Renvs/R-4.4.2-IRkernel/library/"
 
-config_fn=/home/dg204/projects/rsignatures/src/overlapConfigsSigs2.csv
-#config_fn=/home/dg204/projects/rsignatures/src/overlapConfigs.csv
+config_fn=overlapConfigsSigs2.csv
+
+OUTPUT_FOLDER="../data/processed/APOBEC/"
+mkdir -p "$OUTPUT_FOLDER"
+
 LNO=${SLURM_ARRAY_TASK_ID}
 NTH_LINE=$(cat ${config_fn} | head -${LNO} | tail -1)
 echo $NTH_LINE
@@ -34,10 +66,6 @@ echo "$MAX_SIG"
 SAMPLE_SUBSET=$(echo $NTH_LINE | awk -F"," '{ print $6}')  
 echo "$SAMPLE_SUBSET"
 
-
-#OUTPUT_FOLDER=/home/dg204/park_dglodzik/APOBEC_overlaps/
-OUTPUT_FOLDER=/home/dg204/park_dglodzik/APOBEC_overlaps/sigs_all/
-
 Rscript run_overlaps.R \
 --svclass "$SVCLASS" \
 --size_min "$SIZE_MIN" \
@@ -46,4 +74,4 @@ Rscript run_overlaps.R \
 --max_sig "$MAX_SIG" \
 --subset "$SAMPLE_SUBSET"
 
-# look for notebooks/APOBEC/muts_dups_signatures_summary.ipynb
+# summarize the results across the runs using this notebook: notebooks/APOBEC/muts_dups_signatures_summary.ipynb
