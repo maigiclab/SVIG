@@ -218,7 +218,7 @@ for (si in 1:nrow(test.samples.df.sinatures.abobec)) {
                         test.bedpe$start2 <- test.bedpe$start1+ test.bedpe$length         
                     }
                    
-                    r <- performSVOverlaps.R(muts.gr, test.bedpe)
+                    r <- performSVOverlaps.R(muts.gr, test.bedpe, simulate, margin.size)
                     sample.summary.list[[si]] <-  r[['sample.summary']]
                     apobec.mut.list[[si]] <- r[['sample_muts_apobec']]
                     mut.list[[si]] <- r[['muts_df']]
