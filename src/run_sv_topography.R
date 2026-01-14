@@ -1,4 +1,20 @@
+# analysis of replication timing, origins, direction, gene expression, germline repeats at breakpoints
+# performed for a group of SVs, which can be signature defined
+
+# overview
+# load SVs
+# filter SVs (by signature or sample group)
+# optional: simulate SVs
+# perform overlaps between SV segments and replication timing and origins; summarize as plots
+# perform overlaps between SVs and genes; summarize as plots
+# gene expression, replication time, and direction overlaps "catalogues" for the SV set
+# calculate replication time at breakpoints and calcualte summary metrics
+# perform regression analysis of SV breakpoints in bins: what genomic characteristics predispose to more breakpoints
+# microhomology analysis using Hartwig SV calls
+# all the main statistics are saved to the resultList list, which is saved as an RData object, and then summarized in a notebook
+
 if (interactive()) {
+    # for debugging
     exp.name <- 'RS1'
     filter_str <- "max.Ref.Sig=='Ref.Sig.R1'  & (is.clustered==FALSE)"
     shuffle <- FALSE
@@ -6,9 +22,12 @@ if (interactive()) {
     doRegression <- FALSE
 } else {
     args <- commandArgs(trailing = T)
+    # experiment name
     exp.name <-  args[1]
+    # filter string to select SVs
     filter_str <- args[2]
     if (length(args)>2) {
+        # if simulating SVs, how to simulate them
         shuffle_str <- args[3]
         if (shuffle_str=='shuffleFlip') {
             shuffle<-TRUE
@@ -24,7 +43,7 @@ if (interactive()) {
         shuffle<-FALSE
         shuffleMode <- 'simple'
     }
-    
+    # whether to perform per-breakpoint regression analysis
     doRegression <- FALSE
 }
 print(exp.name)
@@ -32,16 +51,18 @@ print(filter_str)
 print(paste('shuffle:',shuffle, shuffleMode))
 
 makePDFs <- TRUE
-# create plots of replication origin density around the rearrangement midpoints
+# create plots of replication origin density around the rearrangement midpoints. 3len (1Mb margin plots are created anyway)
 marginmode <- '3len'
 
-
+# chromosome margins, where we discard Repli-seq probes and do not simulate breakpoints
 chr.margin <- 1e6
 
+# add "shuffle" to experiment name, if simulating
 if (shuffle==TRUE) {
     exp.name <- paste0(exp.name, '_shuffle_', shuffleMode)
 }
 
+# prepare the results folder
 result_folder <- paste0('../data/processed/', exp.name, '/')
 if (!dir.exists(result_folder)) {
   dir.create(result_folder)
@@ -54,11 +75,13 @@ suppressWarnings(library(dplyr))
 suppressWarnings(library(tidyverse))
 suppressWarnings(library(Rsamtools))
 suppressWarnings(library(plyr))
-library(signature.tools.lib)
-library(lmtest)
-library(MASS)
-library(stringr)
-library(rhdf5)
+suppressWarnings(library(signature.tools.lib))
+suppressWarnings(library(lmtest))
+suppressWarnings(library(MASS))
+suppressWarnings(library(stringr))
+suppressWarnings(library(rhdf5))
+
+# utility imports
 source('../utils/prepareBinData.R')
 source('../utils/evalExprOverlap.R')
 source('../utils/evalGCOverlap.R')
@@ -73,53 +96,53 @@ source('../utils/loadRepeats.R')
 source('../utils/plotSignature.R')
 source('../utils/getCategs.R')
 source('../utils/plotCoefficients.R')
-
 # loads reference gene expression files
 source('../utils/loadGRs.R')
 
+# tissue used for gene expression analysis
 expr_tissue <- 'BRCA'
 
 # this is where the results will be stored
 resultList <- list()
+
+# load 
 sample_metadata = read.csv('../data/interim/WGS.metadata.txt', sep='\t')
 sample_metadata <- subset(sample_metadata, !duplicated(icgc_specimen_id))
 rownames(sample_metadata) <- sample_metadata$aliquot_id
-specimen_hist <- read.table('../data/interim/pcawg_specimen_histology_August2016_v7.tsv', sep='\t', header=FALSE)
-sample_metadata.m <- merge(sample_metadata, specimen_hist, by.x='icgc_sample_id', by.y='V6')
-rownames(sample_metadata.m) <- sample_metadata.m$aliquot_id
-# load the reference data
+
+# load the replication timing data
 replis.gr <- toGRanges('../data/interim/MCF7_RepliSeq.bedGraph')
 replis.gr <- replis.gr[lengths(replis.gr)<=1001]
 replis.gr$chr.len<- seqlengths(BSgenome.Hsapiens.UCSC.hg19)[as.character(seqnames(replis.gr))]
 replis.gr<-replis.gr[(start(replis.gr)>chr.margin) & ((replis.gr$chr.len - end(replis.gr))>chr.margin)]
-
 replis.gr$quantile <- qcut(replis.gr$V4, 10)
-# Prepare replication origins, SNS-seq
 
+# load replication origins, SNS-seq
 core.origins <- read.table('../data/interim/akerman_core_origins_hg19.bed', sep='\t')
 core.origins$midopoint <- rowMeans(core.origins[,c('V2', 'V3')])
 common.origins.gr <- GRanges(seqnames=Rle(core.origins$V1),
                   ranges=IRanges(core.origins$midopoint, core.origins$midopoint))
-
 common.origins.width.gr <- GRanges(seqnames=Rle(core.origins$V1),
                   ranges=IRanges(core.origins$V2, core.origins$V3))
-
+# inter-origin distance
 core.origins$distPrev <- core.origins$V2 - c(NA,core.origins$V3[1:(nrow(core.origins)-1)])
-
 core.origins$leftMargin <- core.origins$midopoint - 1e6
 core.origins$rightMargin <- core.origins$midopoint + 1e6
-
 common.origins.1Mb.gr <- GRanges(seqnames=Rle(core.origins$V1),
                   ranges=IRanges(core.origins$leftMargin, core.origins$rightMargin))
 
-# repeats
-repeat_fn <- '../data/interim/rmsk.txt.gz'
-#repeats.gr <- loadRepeats(repeat_fn)
-#save(repeats.gr, file='~/projects/rsignatures/data/processed/repeats.gr.RData')
+# load genomic repeats.gr
 load('../data/interim/repeats.gr.RData')
 
+# PCAWG sample metadata
+specimen_hist <- read.table('../data/interim/pcawg_specimen_histology_August2016_v7.tsv', sep='\t', header=FALSE)
+sample_metadata.m <- merge(sample_metadata, specimen_hist, by.x='icgc_sample_id', by.y='V6')
+rownames(sample_metadata.m) <- sample_metadata.m$aliquot_id
+
 # sample groups of interest
+# samples with CCNE1 amplification
 ccne.samples.df <- read.csv('../data/interim/CCNE1.amp.sample.csv')
+# samples with bi-allelic CDK12 -/-
 curated_cdk12 <- c('0009b464-b376-4fbc-8a56-da538269a02f',
                   '84ca6ab0-9edc-4636-9d27-55cdba334d7d',
                   'b243adb4-b3e7-4e0e-bc0d-625aa8dbb1be',
@@ -128,41 +151,44 @@ curated_cdk12 <- c('0009b464-b376-4fbc-8a56-da538269a02f',
                    '36d1a85e-a09b-4537-86e0-eaf1eb03aed8',
                    '0bfd1043-816e-e3e4-e050-11ac0c4860c5' # this one has two hits
                   )
+# samples with bi-allelic BRCA1/2 loss
 hrd_brca_loh <- read.table('../data/interim/BRCA_and_LOH_PCAWG.tsv', header=TRUE)
 
 
-# end of references
-# load the sample RS signature attributions
-# load the bedpe file 
+# load the SVs
 load('../data/interim/sample.rearrs.RData')
 # the the notebooks: rs.ipynb and rearr_catalogues.ipynb
 length(sample.rearrs)
+# convert a list into a data frame
 all.rearrs <- do.call('rbind',sample.rearrs)
+# add metadata to the SV table
 all.rearrs.m <- merge(all.rearrs, sample_metadata.m, by.x='sample', by.y='aliquot_id', all.x=TRUE)
+
+# filter SVs
 eval(parse(text = paste('test.bedpe <- subset(all.rearrs.m,', filter_str,')')))
 
-# samples with most SVs
+# for the selected set of SVs, count SVs per sample
 st <- sort(table(test.bedpe$sample), decreasing=TRUE)
 top_df <- data.frame(no_svs=st)
 colnames(top_df) <- c('sample', 'no_svs')
 top_df$tissue <- sample_metadata.m[names(st),'V13']
 write.csv(top_df, file=paste0(result_folder,exp.name,'_top_samples.csv'), row.names=FALSE, quote=FALSE)
 
-
-
+# add project code to the SV table
 test.bedpe$dcc_project_code <- sample_metadata[test.bedpe$sample,'dcc_project_code']
-# filter rearrangements
 
-#  pos.1, pos.2, Chromosome.1, Chromosome.2, Signature.SV1, Signature.SV6
+
+# calculate the position of SV midpoint, length
 test.bedpe$mid <- rowMeans(test.bedpe[,c('start1', 'start2')])
 test.bedpe$length <- test.bedpe$start2 - test.bedpe$start1
+# 
 class.maxlen <- quantile( test.bedpe$length, 0.80)
 
 test.bedpe$chr1.len<- seqlengths(BSgenome.Hsapiens.UCSC.hg19)[paste0('chr', test.bedpe$chrom1) ]
 test.bedpe$chr2.len<- seqlengths(BSgenome.Hsapiens.UCSC.hg19)[paste0('chr', test.bedpe$chrom2) ]
 test.bedpe$is.len.common <- test.bedpe$length < class.maxlen
 
-# shuffling of the SVs
+# random shuffling of the SVs with selected method
 if (shuffle) {
     test.bedpe$chr1.len<- seqlengths(BSgenome.Hsapiens.UCSC.hg19)[paste0('chr', test.bedpe$chrom1) ]
     test.bedpe$chr2.len<- seqlengths(BSgenome.Hsapiens.UCSC.hg19)[paste0('chr', test.bedpe$chrom2) ]
@@ -174,9 +200,7 @@ if (shuffle) {
         test.bedpe$start1[transloc] <- chr.margin + sapply(test.bedpe$chr1.len[transloc]-2*chr.margin, sample, 1) 
         test.bedpe$start2[transloc] <- chr.margin + sapply(test.bedpe$chr2.len[transloc]-2*chr.margin, sample, 1) 
     }
-        
     not_transloc <- test.bedpe$chrom1==test.bedpe$chrom2
-
     if (shuffleMode == 'simple') { 
         test.bedpe$start1[!transloc] <- chr.margin + sapply(test.bedpe$chr1.len[!transloc]-2*chr.margin, sample, 1) 
         test.bedpe$start2[!transloc] <- test.bedpe$start1[!transloc] + test.bedpe$length[!transloc]
@@ -191,20 +215,21 @@ if (shuffle) {
 
     test.bedpe <- subset(test.bedpe, start2 < (chr2.len-2*chr.margin))
     test.bedpe <- test.bedpe[order(test.bedpe$repliseq.new),]
-    # maybe uneven repliseq profile results from chromosome distribution?
 }
 
+#Remove SVs close to telomeres and whose length is uncommon (above the 80th percentile).    
 test.bedpe$is.proper <- (test.bedpe$start1>chr.margin) & (test.bedpe$start2 <(test.bedpe$chr1.len - chr.margin) ) & test.bedpe$is.len.common
+# remove inter-chromosomal translocations
 test.bedpe.sel <- subset(test.bedpe, (chrom1==chrom2) & (is.proper==TRUE))
+
+# create an SV catalogue from all SVs
 test.bedpe2 <- test.bedpe
+# since it is a meta-analysis, sample ID is removed
 test.bedpe2$sample <- 'X'
 test.bedpe2$svclass[test.bedpe2$svclass=='duplication'] <- 'tandem-duplication'
-
 catalogue <- bedpeToRearrCatalogue(test.bedpe2)
 m <- as.matrix(rowSums(catalogue$rearr_catalogue))
 colnames(m) <- 'all samples'
-
-
 if (makePDFs) {
     pdf(paste0(result_folder,exp.name,'_rearr_catalogue_all.pdf'), width=10, height=3)
 }
@@ -213,40 +238,37 @@ if (makePDFs) {
     dev.off()
 }
 
+# plot the SV length distribution    
 r_dens <- density(log10(subset(test.bedpe, chrom1==chrom2)$length))
-
 if (makePDFs) {
     pdf(paste0(result_folder,exp.name,'_length_density.pdf'), width=8, height=8)
 }
-
-
 # Kernel density plot
 plot(r_dens, lwd = 2, xlab='rearrangement length', col='dark gray', xlim=c(2.5,8), main=paste(exp.name, 'length density'))
-
 if (makePDFs) {
     dev.off()
 }
 
-
-# this used to be the MH section
-
-
 # these are the segments that denote SV footprint
 # add 3xSV margin
+# margin needs to be added to the genomicsRanges object, since we want the overlaps to include the margins
 segments.gr <- GRanges(seqnames=Rle(paste0('chr', test.bedpe.sel$chrom1)),
           ranges=IRanges(test.bedpe.sel$start1 - 3*test.bedpe.sel$length, 
                          test.bedpe.sel$start2 + 3*test.bedpe.sel$length), seqinfo=seqinfo(BSgenome.Hsapiens.UCSC.hg19))
-segments.gr <- trim(segments.gr)
+segments.gr <- trim(segments.gr) # clip to valid chromosome ranges (important if simulating)
 segments.gr$rs.class <- test.bedpe.sel$max.Ref.Sig
 segments.gr$length <- test.bedpe.sel$start2 - test.bedpe.sel$start1
 segments.gr$midpoint = rowMeans(test.bedpe.sel[,c('start2', 'start1')])
 segments.gr$rearr.start <- test.bedpe.sel$start1
 segments.gr$rearr.end <- test.bedpe.sel$start2
 segments.gr$sample <- test.bedpe.sel$sample
+
+# a variant of the SV GR object, but without margins
 segments.no.margin.gr <- segments.gr
 start(segments.no.margin.gr) <- test.bedpe.sel$start1
 end(segments.no.margin.gr) <- test.bedpe.sel$start2
-# SV segments + 1Mb "margim":
+    
+# now, create another variables with 1 mb margin SV
 margim <- 1e6
 segments.1Mb.gr <- GRanges(seqnames=Rle(paste0('chr', test.bedpe.sel$chrom1)),
                   ranges=IRanges(test.bedpe.sel$start1-margim, 
@@ -261,9 +283,8 @@ segments.1Mb.gr$rs.length <- segments.1Mb.gr$length
 segments.1Mb.gr$start1 <- segments.1Mb.gr$rearr.start
 segments.1Mb.gr$start2 <-  segments.1Mb.gr$rearr.end
 
-# overlap of SVs (1Mb margin) with replication origins
+# calculate overlaps of SVs (1Mb margin) with replication origins
 o.breast.df.1Mb <- as.data.frame(findOverlaps(segments.1Mb.gr, common.origins.gr))
-
 o.breast.df.1Mb$rs.midpoint <- segments.1Mb.gr$midpoint[o.breast.df.1Mb$queryHits]
 o.breast.df.1Mb$origin <- start(common.origins.gr)[o.breast.df.1Mb$subjectHits]
 o.breast.df.1Mb$rs.length <- segments.1Mb.gr$length[o.breast.df.1Mb$queryHits]
@@ -271,58 +292,63 @@ o.breast.df.1Mb$distanceToOrigin <- o.breast.df.1Mb$origin - o.breast.df.1Mb$rs.
 o.breast.df.1Mb$isWithinSV <-  (start(common.origins.gr)[o.breast.df.1Mb$subjectHits] > segments.1Mb.gr$rearr.start[o.breast.df.1Mb$queryHits]) &
                                 (end(common.origins.gr)[o.breast.df.1Mb$subjectHits] < segments.1Mb.gr$rearr.end[o.breast.df.1Mb$queryHits])
 origin.v <- c(sum(o.breast.df.1Mb$isWithinSV==TRUE), sum(o.breast.df.1Mb$isWithinSV==FALSE))
+# trials correspond to SV size, or margin size
 trials.v <-  c(sum(segments.1Mb.gr$rearr.end - segments.1Mb.gr$rearr.start ),(length(segments.1Mb.gr) * 2 * margim))
 comp.data <- matrix(c(origin.v, 
                trials.v), nrow = 2, byrow = TRUE)
 # enrichment of replication origins compared to the margins
 v <- origin.v/trials.v
 RR <- v[1]/v[2]
+# use the proportion test
 pt <- prop.test(origin.v, trials.v)
 resultList[['originEnrichmentES']] <- RR
 resultList[['originEnrichmentP']] <- pt$p.value
-
+# standard error and CIs for origin enrichment
 SE_logRR <- sqrt((1-v[1])/origin.v[1] + (1-v[2])/origin.v[2])
 CI_logRR <- log(RR) + c(-1,1)*1.96*SE_logRR
 CI_RR <- exp(CI_logRR)
 resultList[['originEnrichmentES_lower95']] <- CI_RR[1]
 resultList[['originEnrichmentES_higher95']] <- CI_RR[2]
 
-# Step 2: Perform Fisher's Exact Test
-#result <- fisher.test(data)
-# overlap of SVs (1Mb margin) with repli-seq
+# calculate overlaps of SVs (1Mb margin) with repli-seq probes
 o.df.1Mb <- as.data.frame(findOverlaps(segments.1Mb.gr, replis.gr))
 o.df.1Mb$rs.midpoint <- segments.1Mb.gr$midpoint[o.df.1Mb$queryHits]
 o.df.1Mb$rearr.start <- segments.1Mb.gr$rearr.start[o.df.1Mb$queryHits]
 o.df.1Mb$rearr.end <- segments.1Mb.gr$rearr.end[o.df.1Mb$queryHits]
 o.df.1Mb$rs.length <- o.df.1Mb$rearr.end - o.df.1Mb$rearr.start
 o.df.1Mb$repli_measure <- replis.gr$V4[o.df.1Mb$subjectHits]
+# distance between repliseq probe and SV 
+# the word "Gene" is for historical reasons. should be "probe"
 o.df.1Mb$distGeneStartToMidpoint <-start(replis.gr)[o.df.1Mb$subjectHits] - o.df.1Mb$rs.midpoint 
 o.df.1Mb$distGeneEndToMidpoint <- end(replis.gr)[o.df.1Mb$subjectHits] - o.df.1Mb$rs.midpoint 
 o.df.1Mb$distGeneStartToMidpointScaled <- o.df.1Mb$distGeneStartToMidpoint
 o.df.1Mb$distGeneEndToMidpointScaled <- o.df.1Mb$distGeneEndToMidpoint       
+# 10kb bins around the SV midpoint
 o.df.1Mb$distGeneStartToMidpointScaledInt <- round(o.df.1Mb$distGeneStartToMidpointScaled/1e4,0)
 o.df.1Mb$distGeneEndToMidpointScaledInt <- round(o.df.1Mb$distGeneEndToMidpointScaled/1e4,0) 
-
-
+# these offsets are needed, such that bin indices are positive
 minBin <- abs(min(o.df.1Mb$distGeneStartToMidpointScaledInt, na.rm=TRUE)) + 1
 maxBin <- abs(max(o.df.1Mb$distGeneStartToMidpointScaledInt, na.rm=TRUE)) + 1
-
 o.df.1Mb$distGeneStartToMidpointScaledIntPos <- o.df.1Mb$distGeneStartToMidpointScaledInt + minBin
 o.df.1Mb$distGeneEndToMidpointScaledIntPos <- o.df.1Mb$distGeneEndToMidpointScaledInt + minBin
 maxBinPos <- max(o.df.1Mb$distGeneEndToMidpointScaledIntPos)
-
+# each segment now has bin ID endpoints; calculate coverage
 cvg = coverage(IRanges(start=o.df.1Mb$distGeneStartToMidpointScaledIntPos, 
                                    end=o.df.1Mb$distGeneEndToMidpointScaledIntPos))
-
+# this is how we calculate the sum replication time per bin
+# later, we will calculate average replication time as measure/cvg
 measure = coverage(IRanges(start=o.df.1Mb$distGeneStartToMidpointScaledIntPos, 
                                    end=o.df.1Mb$distGeneEndToMidpointScaledIntPos), 
                            weight=as.integer(o.df.1Mb$repli_measure))
 
+# plot the distribution of replication origins and average replication timing
+# this is with 1Mb margins
 options(repr.plot.width=8, repr.plot.height=8)
 if (makePDFs) {
     pdf(file=paste0(result_folder, 'replication_association_',exp.name,'_1Mb.pdf'), width=8, height=8)
 }    
-par(mar = c(6, 6, 6, 6))
+    par(mar = c(6, 6, 6, 6))
+    # calculate the histogram of replication origins
     h <- hist(o.breast.df.1Mb$distanceToOrigin, breaks=100, plot=FALSE)
     # Scale the counts
     h$counts <- h$counts/nrow(test.bedpe)
@@ -342,39 +368,40 @@ par(mar = c(6, 6, 6, 6))
     axis(side=2, at=yticks, labels=yticks, cex.axis=2)
     # Add custom x-axis (no scientific notation)
     axis(side=1, at=xticks, labels=c('-1', '0', '+1'), cex.axis=2)
-# Add vertical line at zero
-abline(v=0, lty=2)
-# repliseq line
-par(new = TRUE)                            
- plot((1:length(cvg)-minBin)*1e4, measure/cvg,pch=19, ylim=c(30,60), 
-    xlim=c(-1e6, 1e6), 
-      xaxs="i", col='#7570b3',  
-    cex.lab=1.5, cex.axis=1.5, cex.main=1.5, cex.sub=1.5, xlab='', ylab='', main='',axes=FALSE)
-axis(side = 4, 
-     at = c(30, 40, 50, 60), 
-     cex.lab = 2, 
-     cex.axis = 2, 
-     col.axis = "#7570b3",  # tick label color
-     col = "#7570b3")
-mtext("Average Repli-seq signal", side = 4, line = 3,cex=2, col='#7570b3')     
+    # Add vertical line at zero
+    abline(v=0, lty=2)
+    # repliseq line
+    par(new = TRUE)                            
+    plot((1:length(cvg)-minBin)*1e4, 
+        measure/cvg,
+        pch=19, ylim=c(30,60), 
+        xlim=c(-1e6, 1e6), 
+        xaxs="i", col='#7570b3',  
+        cex.lab=1.5, cex.axis=1.5, cex.main=1.5, cex.sub=1.5, xlab='', ylab='', main='',axes=FALSE)
+    axis(side = 4, 
+         at = c(30, 40, 50, 60), 
+         cex.lab = 2, 
+         cex.axis = 2, 
+         col.axis = "#7570b3",  # tick label color
+         col = "#7570b3")
+    mtext("Average Repli-seq signal", side = 4, line = 3,cex=2, col='#7570b3')     
 if (makePDFs) {
     dev.off()
 }
 
-# the overlap data frame
-# left is query, right is subject
+# calculate overlaps with margins proportional to SV length
 # segments: SVs + 3 SV lengths to the left and to the right
+# calculate the overlaps
 o.breast.df <- as.data.frame(findOverlaps(segments.gr, common.origins.gr))
+# this is the SV x origin overlap data frame, with each line corresponding to 1 overlap
 o.breast.df$rs.midpoint <- segments.gr$midpoint[o.breast.df$queryHits]
 # note: for origins, we use the start position
 o.breast.df$origin <- start(common.origins.gr)[o.breast.df$subjectHits]
 o.breast.df$rs.length <- segments.gr$length[o.breast.df$queryHits]
 o.breast.df$distanceToOrigin <- o.breast.df$origin - o.breast.df$rs.midpoint
-
-# o.breast.3widths.df$distanceToOrigin/o.breast.3widths.df$rs.length
+# distance between midpoint and origin scaled by SV length
 o.breast.df$distanceToOrigin.scaled <- o.breast.df$distanceToOrigin/o.breast.df$rs.length
-o.breast.df$len.inv.weight <- 1/o.breast.df$rs.length 
-
+o.breast.df$len.inv.weight <- 1/o.breast.df$rs.length # was at some point used to downscale unusually long SVs; now we filter them out, so no longer needed
 o.breast.df$rs.start1 <- segments.gr$rearr.start[o.breast.df$queryHits]
 o.breast.df$rs.start2 <- segments.gr$rearr.end[o.breast.df$queryHits]
 
@@ -385,7 +412,7 @@ if (marginmode=='3len') {
     o.breast.df$distanceToOrigin.scaled <- o.breast.df$distanceToOrigin
 }
 o.breast.df$rs.class <- segments.gr$rs.class[o.breast.df$queryHits]
-o.breast.df$len.inv.weight <- 1/o.breast.df$rs.length
+o.breast.df$len.inv.weight <- 1/o.breast.df$rs.length # obsolete
 
 # overlap with Repli-seq (margin flexible, depending on SV length)
 o.df <- as.data.frame(findOverlaps(segments.gr, replis.gr))
@@ -396,7 +423,8 @@ o.df$rs.length <- o.df$rearr.end - o.df$rearr.start
 o.df$rs.class <- segments.gr$rs.class[o.df$queryHits]
 o.df$repli_measure <- replis.gr$V4[o.df$subjectHits]
 no.bins <- 100 # per one unit: 1Mb or SV length
-if (marginmode=='3len') {
+# calculate positions (bins) of probes relative to SVs
+if (marginmode=='3len') { # this is the only mode that should be used; others are obsolete
     o.df$distGeneStartToMidpoint <-start(replis.gr)[o.df$subjectHits] - o.df$rs.midpoint 
     o.df$distGeneEndToMidpoint <- end(replis.gr)[o.df$subjectHits] - o.df$rs.midpoint 
     o.df$distGeneStartToMidpointScaled <- o.df$distGeneStartToMidpoint/o.df$rs.length 
@@ -474,10 +502,12 @@ par(mar = c(6, 6, 6, 6))
     abline(v=.5, lwd=6 ,col="#4EA72E")
     abline(v=0, lty=2)
     par(new = TRUE)                             # Add new plot
-       plot((1:length(cvg)-minBin)/100, measure/cvg,  pch=19, ylim=c(30,60), 
-        xlim=c(-3.5, 3.5), 
-        xaxs="i",  ylab='',
-        cex.lab=1.5, cex.axis=1.5, cex.main=1.5, cex.sub=1.5, xlab='' ,axes=FALSE, col='#7570b3', main='')
+    plot((1:length(cvg)-minBin)/100, 
+            measure/cvg, # this gives average replication time at a bin 
+            pch=19, ylim=c(30,60), 
+    xlim=c(-3.5, 3.5), 
+    xaxs="i",  ylab='',
+    cex.lab=1.5, cex.axis=1.5, cex.main=1.5, cex.sub=1.5, xlab='' ,axes=FALSE, col='#7570b3', main='')
     
     axis(side = 4, 
      at = c(30, 40, 50, 60), 
@@ -492,6 +522,7 @@ if (makePDFs) {
 
 
 # gene expression analysis
+# load disease by gene average expression matrix, PCAWG derived
 # expr.m, disease.m
 load('../data/interim/disease.RData')
 cancer_types_tab <- table(gsub('-.*', '', test.bedpe$dcc_project_code))
@@ -502,8 +533,7 @@ if (length(cancer_types_tab)>0) {
     print('No matching tissue found')
     expr.tissue <- 'BRCA' 
 }
-
-# load the genes
+# load the genes list
 print(paste('Tissue for expression analysis:', expr.tissue))
 gene.table.fn <- '../data/interim/genes.table.csv'
 genes.table <- as.data.frame(read.csv(gene.table.fn, row.names=NULL)[,2:7])
@@ -516,11 +546,14 @@ disease.m2.bed <- disease.m2[,c('chr', 'chromStart', 'chromEnd', 'strand', 'ensi
 disease.m2.bed$chr <- paste0('chr',disease.m2.bed$chr )
 genes_high_disease <- subset(disease.m2, disease.m2[,expr.tissue] > quantile(disease.m2[,expr.tissue], 0.5))
 genes_low_disease <- subset(disease.m2, disease.m2[,expr.tissue] < quantile(disease.m2[,expr.tissue], 0.5))
+
 segments.gr$rs.length <- segments.gr$length
+# remove any margins; SV segments without margins
 segments.gr$start1 <- segments.gr$rearr.start
 segments.gr$start2 <-  segments.gr$rearr.end
 
 # all the gene plots (3x3)
+# extended figure, subsetting genes in different ways for exploration
 if (makePDFs) {
     pdf(file=paste0(result_folder, 'genes_bps_',exp.name,'.pdf'), width=24, height=24)
     par(mfrow = c(3, 3))
@@ -553,21 +586,20 @@ if (makePDFs) {
     dev.off()
 }
 
-# gene plots (2,1)
+# gene vs SV plots,
+# this time only 2 subplots: comparing highly and low expressed genes
 if (makePDFs) {
     pdf(file=paste0(result_folder, 'genes_high_expr_bps_',exp.name,'.pdf'), width=8, height=8)
     par(mar = c(6, 6, 6, 6))
     #par(mfrow = c(2, 1))
 }
-#r1<- rs_gene_overlaps(genes_high_disease, segments.1Mb.gr, rs.groups=NULL, marginmode='1Mb',  
-#                      ylab=paste0('highly expressed genes per SV, ',expr.tissue), 
-#                      no.bins=100,  
-#                      plot_tile=paste(nrow(test.bedpe), 'SVs'))
 
 ymax <- max(r3[['max_y']], r2[['max_y']])+ 0.01
 ymax <- max(0.4,ymax)
 
-r2 <- rs_gene_overlaps(genes_low_disease, segments.gr, rs.groups=NULL, marginmode=marginmode,  ylab=paste0('High expr. genes (',expr.tissue,') per bin per SV'), no.bins=100,  plot_tile=exp.name,
+r2 <- rs_gene_overlaps(genes_low_disease, 
+                       segments.gr, 
+                       rs.groups=NULL, marginmode=marginmode,  ylab=paste0('High expr. genes (',expr.tissue,') per bin per SV'), no.bins=100,  plot_tile=exp.name,
                       add.newplot = TRUE, ymax=ymax, lineCol='gray')
 
 r3 <- rs_gene_overlaps(genes_high_disease,  
@@ -585,8 +617,8 @@ if (makePDFs) {
     dev.off()
 }    
 
+# replication time at breakpoints    
 # repliseq at bp1, midpoint, bp2
-# replication time at breakpoints
 test.bedpe$sv_id_global <- paste(test.bedpe$sample, test.bedpe$sv_id)
 rownames(test.bedpe) <- test.bedpe$sv_id_global 
 bps.temp.gr <- getBpGr(test.bedpe, addMidpoint=TRUE)
@@ -605,14 +637,17 @@ wide_df <- reshape(
   idvar = "sv_id_global",
   direction = "wide"
 )
+# compare replication time at breakpoint 1 of SV to replication time at midpoint
 wbp1 <- wilcox.test(wide_df$repliseq.bp1, wide_df$repliseq.midpoint)
 resultList[['repliseq_midpoint_bp1_wilcoxonP']] <- wbp1$p.value
 repliseq_midpoint_bp1_mean_diff <- mean(wide_df$repliseq.midpoint - wide_df$repliseq.bp1, na.rm=TRUE)
 resultList[['repliseq_midpoint_bp1_mean_diff']] <- repliseq_midpoint_bp1_mean_diff
+# compare replication time at breakpoint 2 of SV to replication time at midpoint
 wbp2 <- wilcox.test(wide_df$repliseq.bp2, wide_df$repliseq.midpoint)
 resultList[['repliseq_midpoint_bp2_wilcoxonP']] <- wbp2$p.value
 repliseq_midpoint_bp2_mean_diff <-  mean(wide_df$repliseq.midpoint - wide_df$repliseq.bp2, na.rm=TRUE)
 resultList[['repliseq_midpoint_bp2_mean_diff']] <- repliseq_midpoint_bp2_mean_diff
+# compare replication time at both breakpoints (concatenated) of SV to replication time at midpoint
 wbps <- wilcox.test(c(wide_df$repliseq.bp1, wide_df$repliseq.bp2), wide_df$repliseq.midpoint)
 resultList[['repliseq_midpoint_both_bp2s_wilcoxonP']] <- wbps$p.value
 
@@ -648,16 +683,40 @@ test.bedpe$sv_id_global <- paste0(test.bedpe$sample, '_', test.bedpe$id)
 rownames(test.bedpe) <- test.bedpe$sv_id_global
 bps.temp.gr <- getBpGr(test.bedpe)
 nrow(test.bedpe)
-
-
-
 bps.temp.gr <- getBpGr(test.bedpe)
+# gene expression, replication time, and direction overlaps    
 ovl_r <- performOverlaps(test.bedpe, bps.temp.gr, replis.gr, rfd.gr, genes.gr )
+# write the statistics
+if ('t_rfd_2d' %in%  names(ovl_r)) {
+    t_rfd_2d <- ovl_r[['t_rfd_2d']]
+    fn <- paste0(result_folder, exp.name,'_RFD.csv')
+    write.csv(t_rfd_2d, file=fn)
+}
 
+if ('t_repli_2d' %in% names(ovl_r)) {
+    t_repli_2d <- ovl_r[['t_repli_2d']]
+    fn <- paste0(result_folder,exp.name,'_repliTiming.csv')
+    write.csv(t_repli_2d, file=fn)
+}
 
+if (('t_expr_2d' %in% names(ovl_r)) && ('t_rfd_2d' %in% names(ovl_r))) {
+    t_expr_2d <- ovl_r[['t_expr_2d']]
+    fn <- paste0(result_folder, exp.name,'_expression.csv')
+    if (makePDFs) {
+        pdf(file=paste0(result_folder, 'catalogue_rfd_',exp.name,'.pdf'), width=20, height=8)
+    }    
+    plotSignature(colSums(ovl_r[['t_rfd_2d']]),c('L_L', 'L_R', 'R_L', 'R_R')) 
+    df <- as.data.frame(colSums(ovl_r[['t_rfd_2d']]))
+    colnames(df) <- c( 'count')
+    write.csv(df, file=paste0(result_folder, 'rfd_counts_',exp.name,'.csv'))
+    if (makePDFs) {
+        dev.off()
+    }
+}
+resultList[['ovl_r']] <- ovl_r
+    
 
-
-# repeat elements
+# repeat elements analysis
 test.bedpe$bp1_repeat_class <- 'no'
 test.bedpe$bp2_repeat_class <- 'no'
 test.bedpe$bp1_repID <-  NA
@@ -688,38 +747,8 @@ resultList[['repeatL1FisherEstimate_lower']] <- rep_fisher$conf.int[1]
 resultList[['repeatL1FisherEstimate_higher']] <- rep_fisher$conf.int[2]
 resultList[['repeatL1FisherPvalue']] <- rep_fisher$p.value
 
-if ('t_rfd_2d' %in%  names(ovl_r)) {
-    t_rfd_2d <- ovl_r[['t_rfd_2d']]
-    fn <- paste0(result_folder, exp.name,'_RFD.csv')
-    write.csv(t_rfd_2d, file=fn)
-}
 
-if ('t_repli_2d' %in% names(ovl_r)) {
-    t_repli_2d <- ovl_r[['t_repli_2d']]
-    fn <- paste0(result_folder,exp.name,'_repliTiming.csv')
-    write.csv(t_repli_2d, file=fn)
-}
-
-if (('t_expr_2d' %in% names(ovl_r)) && ('t_rfd_2d' %in% names(ovl_r))) {
-    t_expr_2d <- ovl_r[['t_expr_2d']]
-    fn <- paste0(result_folder, exp.name,'_expression.csv')
-    if (makePDFs) {
-        pdf(file=paste0(result_folder, 'catalogue_rfd_',exp.name,'.pdf'), width=20, height=8)
-    }    
-    plotSignature(colSums(ovl_r[['t_rfd_2d']]),c('L_L', 'L_R', 'R_L', 'R_R')) 
-    df <- as.data.frame(colSums(ovl_r[['t_rfd_2d']]))
-    colnames(df) <- c( 'count')
-    write.csv(df, file=paste0(result_folder, 'rfd_counts_',exp.name,'.csv'))
-    if (makePDFs) {
-        dev.off()
-    }
-}
-resultList[['ovl_r']] <- ovl_r
-
-
-# repeat elements
-
-
+# per breakpoint regression analysis - used for the supplementary figure only
 if (doRegression) {
     bps.df <- rbind(data.frame(chr=test.bedpe$chrom1, position=test.bedpe$start1, position=test.bedpe$start1),
                    data.frame(chr=test.bedpe$chrom2, position=test.bedpe$start2, position=test.bedpe$start1)
@@ -785,11 +814,11 @@ save(resultList, file=paste0(result_folder, 'stats_light_',exp.name,'.RData'))
 
 # mh analysis
 # microhomology analysis based on Hartwig data
-# 
+# load the hartwig data (these are independent SV calls, but the filter is the same
 load('../data/interim/sample.rearrs.hartwig.RData')
 all.rearrs.m <- merge(sample.rearrs.df, sample_metadata.m, by.x='sample', by.y='aliquot_id', all.x=TRUE)
 eval(parse(text = paste('test.bedpe <- subset(all.rearrs.m,', filter_str,')')))
-
+# statistics on microhomology length
 t_mh <- table(test.bedpe$sample, test.bedpe$label, test.bedpe$HOMLEN_lbl)
 t_mh_2d <- collapseTable3D2D(t_mh)
 order1 <- c('clustered', 'non-clustered')
@@ -823,6 +852,7 @@ if (makePDFs) {
     dev.off()
 }
 
+# plot per-sample microhomology statistics for 10 samples with highest number of SVs of a given group
 if (nrow(top_df)>0) {
     if (makePDFs) {
         pdf(paste0(result_folder,exp.name,'_mh_catalogue_top10.pdf'), width=20, height=8)

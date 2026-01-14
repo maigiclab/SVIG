@@ -1,0 +1,62 @@
+RS1,max.Ref.Sig=='Ref.Sig.R1'  & (is.clustered==FALSE)
+RS3,max.Ref.Sig=='Ref.Sig.R3'  & (is.clustered==FALSE)
+RS5,max.Ref.Sig=='Ref.Sig.R5'  & (is.clustered==FALSE)
+RS7,max.Ref.Sig=='Ref.Sig.R7'  & (is.clustered==FALSE)
+RS8,max.Ref.Sig=='Ref.Sig.R8'  & (is.clustered==FALSE)
+RS9,max.Ref.Sig=='Ref.Sig.R9'  & (is.clustered==FALSE)
+RS10,max.Ref.Sig=='Ref.Sig.R10'  & (is.clustered==FALSE)
+RS11,max.Ref.Sig=='Ref.Sig.R11'  & (is.clustered==FALSE)
+RS14,max.Ref.Sig=='Ref.Sig.R14'  & (is.clustered==FALSE)
+RS15,max.Ref.Sig=='Ref.Sig.R15'  & (is.clustered==FALSE)
+cdk12_dups,sample %in% curated_cdk12 & label2=='_tds' & is.clustered==FALSE  & length < 5e6 & length >1e5 
+ccne1_dups,(sample %in% ccne.samples.df$aliquot_id) & label2=='_tds' & is.clustered==FALSE  & length < 5e6 & length >1e5
+cdk12_R1_dups,sample %in% curated_cdk12 & label2=='_tds' & is.clustered==FALSE  & length < 5e6 & length >1e5 & max.Ref.Sig=='Ref.Sig.R1'
+ccne1_R1_dups,(sample %in% ccne.samples.df$aliquot_id) & label2=='_tds' & is.clustered==FALSE  & length < 5e6 & length >1e5 & max.Ref.Sig=='Ref.Sig.R1'
+RS1_pancreas,max.Ref.Sig=='Ref.Sig.R1' & label2=='_tds'& V15=='Pancreas'
+RS1_ovary,max.Ref.Sig=='Ref.Sig.R1' & label2=='_tds'& V15=='Ovary'
+RS1_lung,max.Ref.Sig=='Ref.Sig.R1' & label2=='_tds'& V15=='Lung'
+RS1_esophagus,max.Ref.Sig=='Ref.Sig.R1' & label2=='_tds'& V15=='Esophagus'
+RS1_breast,max.Ref.Sig=='Ref.Sig.R1' & label2=='_tds'& V15=='Breast'
+RS1_bone,max.Ref.Sig=='Ref.Sig.R1' & label2=='_tds'& V15=='Bone/SoftTissue'
+RS2,max.Ref.Sig=='Ref.Sig.R2'
+RS4,max.Ref.Sig=='Ref.Sig.R4'
+RS6a,max.Ref.Sig=='Ref.Sig.R6a'
+RS6b,max.Ref.Sig=='Ref.Sig.R6b'
+RS12,max.Ref.Sig=='Ref.Sig.R12'
+RS13,max.Ref.Sig=='Ref.Sig.R13'
+RS16,max.Ref.Sig=='Ref.Sig.R16'
+RS17,max.Ref.Sig=='Ref.Sig.R17'
+RS18,max.Ref.Sig=='Ref.Sig.R18'
+RS19,max.Ref.Sig=='Ref.Sig.R19'
+RS20,max.Ref.Sig=='Ref.Sig.R20'
+RS3_short,max.Ref.Sig=='Ref.Sig.R3' & (is.clustered==FALSE) & (length <1e4)
+RS3_hrd,(sample %in% hrd_brca_loh$aliquot_id)  & max.Ref.Sig=='Ref.Sig.R3' & (is.clustered==FALSE)
+RS3_hrd_short,(sample %in% hrd_brca_loh$aliquot_id)  & max.Ref.Sig=='Ref.Sig.R3' & (is.clustered==FALSE) & length < 1e4
+RS5_hrd,(sample %in% hrd_brca_loh$aliquot_id)  & max.Ref.Sig=='Ref.Sig.R5' & (is.clustered==FALSE)
+cdk12_dups_shorter,sample %in% curated_cdk12 & label2=='_tds' & is.clustered==FALSE  & length < 1e6 & length >1e5
+cdk12_dups_longer,sample %in% curated_cdk12 & label2=='_tds' & is.clustered==FALSE  & length < 5e6 & length >1e6
+RS1,max.Ref.Sig=='Ref.Sig.R1'  & (is.clustered==FALSE),shuffleSimple
+RS3,max.Ref.Sig=='Ref.Sig.R3'  & (is.clustered==FALSE),shuffleSimple
+RS5,max.Ref.Sig=='Ref.Sig.R5'  & (is.clustered==FALSE),shuffleSimple
+RS7,max.Ref.Sig=='Ref.Sig.R7'  & (is.clustered==FALSE),shuffleSimple
+RS8,max.Ref.Sig=='Ref.Sig.R8'  & (is.clustered==FALSE),shuffleSimple
+RS9,max.Ref.Sig=='Ref.Sig.R9'  & (is.clustered==FALSE),shuffleSimple
+RS10,max.Ref.Sig=='Ref.Sig.R10'  & (is.clustered==FALSE),shuffleSimple
+RS11,max.Ref.Sig=='Ref.Sig.R11'  & (is.clustered==FALSE),shuffleSimple
+RS14,max.Ref.Sig=='Ref.Sig.R14'  & (is.clustered==FALSE),shuffleSimple
+RS1,max.Ref.Sig=='Ref.Sig.R1'  & (is.clustered==FALSE),shuffleFlip
+RS3,max.Ref.Sig=='Ref.Sig.R3'  & (is.clustered==FALSE),shuffleFlip
+RS5,max.Ref.Sig=='Ref.Sig.R5'  & (is.clustered==FALSE),shuffleFlip
+RS7,max.Ref.Sig=='Ref.Sig.R7'  & (is.clustered==FALSE),shuffleFlip
+RS8,max.Ref.Sig=='Ref.Sig.R8'  & (is.clustered==FALSE),shuffleFlip
+RS9,max.Ref.Sig=='Ref.Sig.R9'  & (is.clustered==FALSE),shuffleFlip
+RS10,max.Ref.Sig=='Ref.Sig.R10'  & (is.clustered==FALSE),shuffleFlip
+RS11,max.Ref.Sig=='Ref.Sig.R11'  & (is.clustered==FALSE),shuffleFlip
+RS14,max.Ref.Sig=='Ref.Sig.R14'  & (is.clustered==FALSE),shuffleFlip
+cdk12_dups_shuffledSimple,sample %in% curated_cdk12 & label2=='_tds' & is.clustered==FALSE  & length < 5e6 & length >1e5,shuffleSimple 
+ccne1_dups_shuffledSimple,(sample %in% ccne.samples.df$aliquot_id) & label2=='_tds' & is.clustered==FALSE  & length < 5e6 & length >1e5,shuffleSimple
+cdk12_R1_dups_shuffledSimple,sample %in% curated_cdk12 & label2=='_tds' & is.clustered==FALSE  & length < 5e6 & length >1e5 & max.Ref.Sig=='Ref.Sig.R1',shuffleSimple
+ccne1_R1_dups_shuffledSimple,(sample %in% ccne.samples.df$aliquot_id) & label2=='_tds' & is.clustered==FALSE  & length < 5e6 & length >1e5 & max.Ref.Sig=='Ref.Sig.R1',shuffleSimple
+cdk12_dups_shorter,sample %in% curated_cdk12 & label2=='_tds' & is.clustered==FALSE  & length < 1e6 & length >1e5,shuffleFlip
+cdk12_dups_longer,sample %in% curated_cdk12 & label2=='_tds' & is.clustered==FALSE  & length < 5e6 & length >1e6,shuffleFlip
+nonclust_shuffledSimple,(is.clustered==FALSE),shuffleSimple

@@ -1,41 +1,85 @@
+
+suppressPackageStartupMessages({
+library(optparse)
+library(BSgenome.Hsapiens.UCSC.hg19)
+library("GenomicRanges")
+library(regioneR)
+library(stringr)
+library(lmtest)
+library(MASS)
+library(signature.tools.lib)
+library(plyr)
+library(readxl)
+require(MutationTimeR) #
+library(reshape2)
+})    
+
+source('utils/plotCoefficients.R')
+source('utils/prepareBinData.R')
+source('utils/performSVOverlaps.R') # the main worker function
+
+
 if (interactive()) {
+    # default values as an example and for debugging
     is.clustered <- FALSE
     svclass <- "duplication"
     size_min <- -1
-    size_max <- 10000000
-    outputFolder <- '/home/dg204/park_dglodzik/APOBEC_overlaps/sigs_all/'
-    max_sig <- NULL
-    sample_subset <- 'CCNE1'
-    output_folder <- '/home/dg204/park_dglodzik/APOBEC_overlaps/sigs_all/'
+    size_max <- 3e5
+    max_sig <- 'Ref.Sig.R1'
+    sample_subset <- NULL
+    output_folder <- '../data/processed/'
 } else {
 
-    library(optparse)
     option_list <- list(
       make_option(c( "--svclass"), type = "character", help = "SV class"),
       make_option(c("--size_min"), type = "integer", help = "Minimum size"),
       make_option(c("--size_max"), type = "integer", help = "Maximum size"),
       make_option(c( "--output"), type = "character", help = "Output folder"),
-      make_option(c( "--max_sig"), type = "numeric", help = "RS signature (eg. Ref.Sig.R15)"),
-      make_option(c("--subset"), type = "character", help = "Sample subset (CCNE1, CDK12, HRD)")
+      make_option(c( "--max_sig"), type = "numeric", help = "RS signature (eg. Ref.Sig.R1)"),
+      make_option(c("--subset"), type = "character", help = "Sample subset, eg 'CCNE1', 'CDK12', 'HRD'; can be NULL")
     )
+    # parse the command arguments
     opt_parser <- OptionParser(option_list = option_list)
     opt <- parse_args(opt_parser)
-    print(opt)
     svclass <- opt$svclass
     size_min <- opt$size_min
     size_max <- opt$size_max
     output_folder <- opt$output
     max_sig <- if (opt$max_sig == "null") NULL else opt$max_sig
     sample_subset <- opt$subset
-    
+    # by default, only analyze non-clustered SVs
     is.clustered <- FALSE
-
 }
 
+# key settings
+simulate <- FALSE # the naive generation of synthetic data is obsolete
+margin.size <- 1e5 # size of the region around SVs
+loadTimeR <- TRUE
+
+# inputs:
 pcawg_muts_folder <- '/home/dg204/park_data/ICGC/SNV_indel_calls/final_consensus_12oct_passonly/snv_mnv/'
-sample_metadata = read.csv('../data/interim//WGS.metadata.txt', sep='\t')
+sample_metadata_fp <- '../data/interim//WGS.metadata.txt'
+sv_data_fp <- '../data/interim//sample.rearrs.RData'
+# TimeR result path
+# this is missing the context field
+# we will be loading sample files in /data/*.RData folder, which come from TimeR
+# see projects/brca_timing/src/script_hrd_timer_pcawg.sh
+muts_timer_path <- "/home/dg204/park_dglodzik/TimeR_bb_all_sigs/"
+sbs_signatures_pcawg_fp <- '../data/interim/SigProfilier_PCAWG_WGS_probabilities_SBS.csv'
+sbs_signatures_pcawg_exposures_fp <- '../data/interim/PCAWG_sigProfiler_SBS_signatures_in_samples.csv'
+sv_sigs_fp <- '../data/interim/43018_2020_27_MOESM3_ESM.xlsx'
+# sample lists
+ccne1_sample_list_fp <- '../data/interim/CCNE1.amp.sample.csv'
+hrd_sample_list_fp <- '../data/interim/BRCA_and_LOH_PCAWG.tsv'
+# others
+mappability_fp <- '../data/interim/hg19.CRC.100mer.bed'
+
+
+# load the metadata
+sample_metadata = read.csv(sample_metadata_fp, sep='\t')
 sample_metadata <- subset(sample_metadata, !duplicated(icgc_specimen_id))
 
+# make a name for the experiment
 exp.name <- paste0('PCAWG_', svclass,'_',size_min, '_', as.integer(size_max), '_', max_sig) 
 if (!is.null(sample_subset)) {
     exp.name <- paste0(exp.name, '_', sample_subset)
@@ -44,56 +88,28 @@ test.samples.df <- sample_metadata
 # this is used if maxSig is null
 
 
-# key settings
-simulate <- FALSE
-margin.size <- 1e5
-loadTimeR <- TRUE
-# TimeR result path
-# this is missing the context field
-# see projects/brca_timing/src/script_hrd_timer_pcawg.sh
-result_path <- "/home/dg204/park_dglodzik/TimeR_bb_all_sigs/"
-
-# to be used with CCNE1
-# to be used with CDK12
-# this is INCOMPLETE!
-#result_path <- "~/projects/rsignatures/data/processed/TimeR_bb"
-
-
-suppressWarnings(library(BSgenome.Hsapiens.UCSC.hg19))
-suppressWarnings(library("GenomicRanges"))
-suppressWarnings(library(regioneR))
-library(stringr)
-library(lmtest)
-library(MASS)
-source('utils/plotCoefficients.R')
-source('utils/prepareBinData.R')
-library(signature.tools.lib)
-library(plyr)
-library(readxl)
-require(MutationTimeR) #
-library(reshape2)
-options(repr.matrix.max.cols=200, repr.matrix.max.rows=100)
-source('utils/performSVOverlaps.R')
 
 #notebooks/signature calc/rearr_catalogue
-load('../data/interim//sample.rearrs.RData')
+load(sv_data_fp)
 
 # SBS signatures and exposures
-pcawg_attributions <- read.csv('../data/interim/SigProfilier_PCAWG_WGS_probabilities_SBS.csv')
+pcawg_attributions <- read.csv(sbs_signatures_pcawg_fp)
 pcawg_attributions$context <- paste0(substr(pcawg_attributions$Mutation.Subtype,1,1), '[', pcawg_attributions$Mutation.Type, ']', substr(pcawg_attributions$Mutation.Subtype,3,3))
 pcawg_attributions$max_sig<-colnames(pcawg_attributions[,5:(ncol(pcawg_attributions)-1)])[apply(pcawg_attributions[,5:(ncol(pcawg_attributions)-1)],1,which.max)]
 pcawg_attributions$max_prob <- apply(pcawg_attributions[,5:(ncol(pcawg_attributions)-2)],1,max)
-pcawg_exposures <- read.csv('../data/interim/PCAWG_sigProfiler_SBS_signatures_in_samples.csv')
-rs_exposures <- as.data.frame(read_excel('../data/interim/43018_2020_27_MOESM3_ESM.xlsx', sheet='S7'))
+pcawg_exposures <- read.csv(sbs_signatures_pcawg_exposures_fp)
+rs_exposures <- as.data.frame(read_excel(sv_sigs_fp, sheet='S7'))
 rownames(rs_exposures) <- rs_exposures[,1]
 colnames(rs_exposures)[1] <- 'sample'
 rs_exposures$sample <- NULL
 # merge the sample metadata table with SBS and RS exposures
 test.samples.df.sinatures <- merge(test.samples.df, pcawg_exposures, by.x = 'icgc_specimen_id', by.y='Sample.Names')
 test.samples.df.sinatures.abobec <- merge(test.samples.df.sinatures, rs_exposures, by.x='aliquot_id', by.y=0)
+
+# sample groups of interest
 if (!is.null(sample_subset)) {
     if (sample_subset=='CCNE1') {
-        ccne.samples.df <- read.csv('../data/interim/CCNE1.amp.sample.csv')
+        ccne.samples.df <- read.csv(ccne1_sample_list_fp)
         test.samples.df.sinatures.abobec <- subset(test.samples.df.sinatures.abobec, aliquot_id %in% ccne.samples.df$aliquot_id)
     } else if (sample_subset=='CDK12') {
         curated_cdk12 <- c('0009b464-b376-4fbc-8a56-da538269a02f',
@@ -106,18 +122,14 @@ if (!is.null(sample_subset)) {
                   )
         test.samples.df.sinatures.abobec <- subset(test.samples.df.sinatures.abobec, aliquot_id %in% curated_cdk12)
     } else if (sample_subset=='HRD'){
-        hrd_brca_loh <- read.table('../data/interim/BRCA_and_LOH_PCAWG.tsv', header=TRUE)
+        hrd_brca_loh <- read.table(hrd_sample_list_fp, header=TRUE)
         test.samples.df.sinatures.abobec <- subset(test.samples.df.sinatures.abobec, aliquot_id %in% hrd_brca_loh$aliquot_id)
     }    
 }
 print(paste(nrow(test.samples.df.sinatures.abobec), 'samples after  filtering'))
 
-
-# sample groups of interest
-
-
-
-mapability <- read.table('../data/interim/hg19.CRC.100mer.bed')
+# mappability of the reference genome
+mapability <- read.table(mappability_fp)
 mapability.gr <- trim(reduce(GRanges(seqnames=Rle(mapability$V1),
                                   ranges=IRanges(mapability$V2, mapability$V3),seqinfo= seqinfo(BSgenome.Hsapiens.UCSC.hg19))))
 
@@ -128,6 +140,7 @@ apobec.mut.list <- list()
 mut.list<- list()
 sample.summary.list <- list()
 
+# counter of samples to be loaded
 lf <- 0
 
 # looping over samples
@@ -140,11 +153,10 @@ for (si in 1:nrow(test.samples.df.sinatures.abobec)) {
     rownames(pcawg_attributions_si) <- pcawg_attributions_si$context
     
     muts.gr <- NULL
+    # loading point mutations processed with MutationTimeR, which additionally have information on mutation multiplicity
     if (loadTimeR) {
-
-        fn <- paste(result_path, "/data/", sample_id, ".RData", sep="")
+        fn <- paste(muts_timer_path, "/data/", sample_id, ".RData", sep="")
         # prepare muts.gr
-
         if (file.exists(fn)) {
             lf <- lf + 1
             load(fn) # loads the vcf variable
@@ -168,6 +180,7 @@ for (si in 1:nrow(test.samples.df.sinatures.abobec)) {
             #print('file not found')
         }
     } else {
+        # starting with a default VCF file
         sample_muts <- vcfToSNVcatalogue(paste0(pcawg_muts_folder,sample_id,'.consensus.20160830.somatic.snv_mnv.vcf.gz'))
         muts_df <- sample_muts$muts
         muts_df$max_sig <- pcawg_attributions_si[muts_df$context,'max_sig']
@@ -178,7 +191,7 @@ for (si in 1:nrow(test.samples.df.sinatures.abobec)) {
         muts.gr$max_sig <- muts_df$max_sig
     }
 
-    
+    # if file was loaded
     if (!is.null(muts.gr)) {
 
             if (sample_id %in% names(sample.rearrs)) {
@@ -199,6 +212,7 @@ for (si in 1:nrow(test.samples.df.sinatures.abobec)) {
                 
                 if (nrow(test.bedpe)>0) {
                     if (simulate) {
+                        # this was an attempt to simulate SVs by shifting them to the right, preserving length (not used in the manuscript
                         test.bedpe$start1 <- test.bedpe$start2
                         # fake duplicaitons!
                         test.bedpe$start2 <- test.bedpe$start1+ test.bedpe$length         
@@ -215,7 +229,7 @@ for (si in 1:nrow(test.samples.df.sinatures.abobec)) {
 }
 
 print(paste(lf, 'files loaded'))
-
+# save sample-level statistics
 save(sample.summary.list, apobec.mut.list, mut.list, file=paste0(output_folder, exp.name, '.RData'))
 
 

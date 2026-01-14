@@ -122,7 +122,6 @@ elif [ "${SLURM_ARRAY_TASK_ID}" -eq 12 ]; then
         --max-n-components 30 \
         --catalogue-matrix "/home/dg204/projects/rsignatures/data/processed/SVmatrices/GEL/all_tissue_cat_repliTiming_mp.csv" \
         --cohort-name gel_all
-        # see the combinePCAWGcatalogues notebook
 elif [ "${SLURM_ARRAY_TASK_ID}" -eq 13 ]; then
     python "$SCRIPT_PATH" \
         --matrix-type "non_clustered_rfd_to_transpose" \
