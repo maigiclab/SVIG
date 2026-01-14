@@ -1,7 +1,10 @@
-performSVOverlaps.R <- function(muts.gr, test.bedpe) {
-# muts.gr
-#
-# test.bedpe: chrom1, start1, start2, svclass
+performSVOverlaps.R <- function(muts.gr, test.bedpe, simulate, margin.size) {
+# find and characterize overlaps between point mutations and SVs.
+# should be run per sample
+# muts.gr - a genomic ranges object with point mutations
+# test.bedpe - a data frame with SVs: chrom1, start1, start2, svclass
+# simulate - whether perturb the observed SVs
+# margin.size - margin size around SVs [bps]
     
     if (nrow(test.bedpe)>0) {
         if (simulate) {
@@ -21,28 +24,29 @@ performSVOverlaps.R <- function(muts.gr, test.bedpe) {
         margin.left.gr$dup.rel.pos <- -1
         margin.left.gr$dup.start <- test.bedpe$start1
         margin.left.gr$dup.end <- test.bedpe$end2
-        
+
+        # overlaps of SVs with margins
         margin.right.gr <- GRanges(seqnames=Rle(paste0('chr', test.bedpe$chrom1)),
                               ranges=IRanges(test.bedpe$end2+1, test.bedpe$end2+margin.size),seqinfo= seqinfo(BSgenome.Hsapiens.UCSC.hg19))
         margin.right.gr$dup.rel.pos <- 1
         margin.right.gr$dup.start <- test.bedpe$start1
         margin.right.gr$dup.end <- test.bedpe$start2
         
-        all.margins.gr <- c(margin.left.gr, margin.right.gr)
-         # Combine GRanges objects
+         # Combine GRanges objects: left and right margins
         all.margins.gr <- c(margin.left.gr, margin.right.gr)
         # Identify overlaps
+        # Identify self-overlapping ranges and drop the "subject" member of each overlap pair
+        # (with drop.redundant=TRUE, this typically drops the later index in each overlapping pair)
         overlaps <- findOverlaps(all.margins.gr, drop.self = TRUE, drop.redundant = TRUE)
-        # Find indices of the first occurrence of each overlapping region
         keep <- setdiff(seq_along(all.margins.gr), subjectHits(overlaps))
-        # Keep only the first occurrence of each overlapping region
         all.margins.gr <- all.margins.gr[keep]
         
-        # find the overlaps
+        # find the overlaps between mutations and SVs
         overlap.df <- as.data.frame(findOverlaps(muts.gr, rs.gr))
+        # find the overlaps between mutations and SV margins
         overlap.margin.df <- as.data.frame(findOverlaps(muts.gr, all.margins.gr))
             
-        # deal with clustered SVs    
+        # deal with clustered SVs by creating a separate GRanges object    
         clustered.bedpe <- subset(do.call('rbind',sample.rearrs[sample_id]),(is.clustered==TRUE) & (svclass %in% c('deletion', 'duplication', 'inversion')))   
         if (nrow(clustered.bedpe)>0) {
             clustered.gr <- GRanges(seqnames=Rle(paste0('chr', clustered.bedpe$chrom1)),
@@ -76,9 +80,6 @@ performSVOverlaps.R <- function(muts.gr, test.bedpe) {
         muts_df$margin.pos[overlap.margin.df$queryHits] <- all.margins.gr[overlap.margin.df$subjectHits]$dup.rel.pos
         
         muts_df$position.witin.margin <- NA
-
-        #muts_df$margin.pos <- NA
-        #muts_df$margin.pos[overlap.margin.df$queryHits] <- all.margins.gr[overlap.margin.df$subjectHits]$dup.rel.pos
         
         muts_df$is.within.dup.label <- mapvalues(muts_df$is.within.dup, 
           from=c(TRUE,FALSE), 
@@ -87,15 +88,10 @@ performSVOverlaps.R <- function(muts.gr, test.bedpe) {
         # table of verlap frequesncies for muts
         t <- table(muts_df$is.within.dup.label, 
                    muts_df$max_sig)
-        t.norm <- t/rowSums(t)
-    
-        #options(repr.plot.width=14, repr.plot.height=8)
-        #barplot(t, beside = TRUE, legend=TRUE, args.legend = list(x = "topleft", cex = 1.2), ylab='signature exposures', main=sample_id[si]) 
-        #barplot(t.norm, beside = TRUE, legend=TRUE, args.legend = list(x = "topleft", cex = 1.2), ylab='signature exposures', main=sample_id[si])       
+        t.norm <- t/rowSums(t)  
     
         # now check the apobec muts specificaly
-        sample_muts_apobec <- subset(muts_df, max_sig %in% c('SBS2', 'SBS13'))
-        #sample_muts_apobec <- subset(muts_df, max_sig %in% c('SBS2', 'SBS13') & MutCN<1.5)
+        sample_muts_apobec <- subset(muts_df, max_sig %in% c('SBS2', 'SBS13') & MutCN<1.5)
         if (nrow(sample_muts_apobec)>0) {
             sample_muts_apobec <- sample_muts_apobec[order(sample_muts_apobec$chroms, sample_muts_apobec$starts),]
             sample_muts_apobec$distPrev <- sample_muts_apobec$starts - c(NA, sample_muts_apobec$starts[1:(nrow(sample_muts_apobec)-1)])
@@ -113,6 +109,8 @@ performSVOverlaps.R <- function(muts.gr, test.bedpe) {
         sv.footprint <- sum(sum(coverage(reduce(rs.gr))))
         margin.footprint <- sum(sum(coverage(all.margins.gr)))
         bg.footprint <- sum(sum(coverage(mapability.gr))) - sum(sum(coverage(reduce(rs.gr)))) - sum(sum(coverage(all.margins.gr)))
+
+        # create summary statistics for the sample
         sample.summary <- data.frame(sample=sample_id,
                                                apobec.rate.dups=sum(sample_muts_apobec$is.within.dup)/sv.footprint,
                                                apobec.rate.margin=sum(sample_muts_apobec$is.within.margin)/margin.footprint,

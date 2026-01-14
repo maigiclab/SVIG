@@ -28,8 +28,8 @@ Analysis of replication timing, origins, and fork directionality with respect to
 Analysis of APOBEC mutagenesis strand bias at SV loci. PCAWG dataset; SV-signature-focused or genetic-alteration focused experiments.
 
 **Scripts**
-- `src/script_run_overlaps.sh`
-- `src/run_overlaps.R`  
+- `src/script_run_APOBEC_overlaps.sh`
+- `src/run_APOBEC_overlaps.R`  
   
 
 **Notebooks**

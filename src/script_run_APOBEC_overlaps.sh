@@ -66,7 +66,7 @@ echo "$MAX_SIG"
 SAMPLE_SUBSET=$(echo $NTH_LINE | awk -F"," '{ print $6}')  
 echo "$SAMPLE_SUBSET"
 
-Rscript run_overlaps.R \
+Rscript run_APOBEC_overlaps.R \
 --svclass "$SVCLASS" \
 --size_min "$SIZE_MIN" \
 --size_max "$SIZE_MAX" \
