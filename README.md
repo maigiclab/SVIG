@@ -30,7 +30,8 @@ Analysis of APOBEC mutagenesis strand bias at SV loci. PCAWG dataset; SV-signatu
 **Scripts**
 - `src/script_run_APOBEC_overlaps.sh`
 - `src/run_APOBEC_overlaps.R`  
-  
+**Key function**
+- `src/utils/performSVOverlaps.R`  
 
 **Notebooks**
 - `notebooks/APOBEC_summary.ipynb`  
@@ -49,7 +50,7 @@ Plots and comparative analyses of SV signatures in CCNE1- and CDK12-amplified tu
 ### 4. SV catalogue construction
 Generation of SV catalogues for downstream signature analysis.
 
-**Scripts**
+**Key function**
 - `src/utils/performOverlaps.R`
 
 **Notebooks**

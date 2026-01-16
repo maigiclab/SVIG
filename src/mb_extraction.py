@@ -6,7 +6,8 @@ import pandas as pd
 import argparse
 import sys
 import os
-sys.path.append(os.path.dirname(__file__))
+from pathlib import Path
+sys.path.append(os.path.dirname('utils/'))
 from sorted_array import SORTED_CAT_ARRAY
 from sorted_array import SORTED_CAT_ARRAY_RT
 
@@ -22,7 +23,7 @@ parser.add_argument(
     default=False,  
     help="Normalize X before processing"
 )
-parser.add_argument("--catalogue-matrix", default='/home/dg204/projects/rsignatures/data/processed/SVmatrices/GEL/sel_tissue_cat_RFD.csv', help="Input matrix catalogue")
+parser.add_argument("--catalogue-matrix", default='../data/processed/SVmatrices/PCAWG/RFD/Ovary_RFD.csv', help="Input matrix catalogue")
 parser.add_argument("--cohort-name", default='gel_sel', help="Input cohortname")
 
 
@@ -31,7 +32,9 @@ args = parser.parse_args()
 
 
 # Setup logging
-logging.basicConfig(filename='/home/dg204/park_dglodzik/svig/extractionLogs/SV_SigExtraction_mvnmf_RFD_'+args.matrix_type+'.log',
+logging_folder='../data/processed/sig_extraction/'
+Path(logging_folder).mkdir(parents=True, exist_ok=True)
+logging.basicConfig(filename=logging_folder + 'SV_SigExtraction_mvnmf_RFD_'+args.matrix_type+'.log',
                     level=logging.INFO, 
                     format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -81,7 +84,7 @@ elif args.matrix_type=='non_clustered_corr_normalized':
 
 X = X.apply(pd.to_numeric, errors="coerce")
 X=X.loc[:,X.sum(axis=0)>30]
-X.to_csv('/home/dg204/park_dglodzik/svig/extractionLogs/X_'+args.matrix_type+'_'+args.cohort_name+'.csv')
+X.to_csv(logging_folder + '/X_'+args.matrix_type+'_'+args.cohort_name+'.csv')
 
 
 # Initialize the DenovoSig model
@@ -105,7 +108,7 @@ logging.info('DenovoSig model initialized.\n')
 # Fit the model
 model.fit()
 
-with open('/home/dg204/park_dglodzik/svig/extractionLogs/SV_SigExtraction_nmf_RFD_'+args.matrix_type+'_'+args.cohort_name+'.pkl', 'wb') as f:
+with open(logging_folder+'SV_SigExtraction_nmf_RFD_'+args.matrix_type+'_'+args.cohort_name+'.pkl', 'wb') as f:
     pickle.dump(model, f, pickle.HIGHEST_PROTOCOL)
 
 logging.info('Model fitting complete.\n')

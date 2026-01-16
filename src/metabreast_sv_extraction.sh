@@ -1,5 +1,4 @@
 #!/bin/bash
-
 #SBATCH -c 18              
 #SBATCH -t 20-23:50
 #SBATCH -A park_contrib           
@@ -8,6 +7,9 @@
 #SBATCH -o logs/SV_SigExtraction_mvnmf_RFD_%A_%a.out 
 #SBATCH -e logs/SV_SigExtraction_mvnmf__%A_%a.err 
 #SBATCH --array=12-13     
+
+# bash script to perform SV signature extraction
+# jobs 12 and 13 are used in the paper
 
 module load gcc/14.2.0 python/3.13.1 R/4.4.2
 source ~/park_dglodzik/envs/jupytervenv3.13/bin/activate
