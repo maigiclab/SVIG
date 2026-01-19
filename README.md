@@ -83,7 +83,7 @@ Visualization and correction of SV signatures with respect to replication featur
 Training of the SVIG multi-class classifier.
 
 **Notebooks**
-- `notebooks/classifier1.ipynb`
+- `notebooks/classifier_svig.ipynb`
 
 ---
 
