@@ -46,6 +46,10 @@ if (interactive()) {
     # whether to perform per-breakpoint regression analysis
     doRegression <- FALSE
 }
+
+# tissue used for gene expression analysis
+expr_tissue <- 'BRCA'
+
 print(exp.name)
 print(filter_str)
 print(paste('shuffle:',shuffle, shuffleMode))
@@ -82,25 +86,24 @@ suppressWarnings(library(stringr))
 suppressWarnings(library(rhdf5))
 
 # utility imports
-source('../utils/prepareBinData.R')
-source('../utils/evalExprOverlap.R')
-source('../utils/evalGCOverlap.R')
-source('../utils/qcut.R')
-source('../bins_sv_overlaps.R')
-source('../utils/rs_gene_overlaps.R')
-source('../utils/normalizeVector.R')
-source('../utils/getBpGr.R')
-source('../utils/performOverlaps.R')
-source('../utils/getBpGr.R')
-source('../utils/loadRepeats.R')
-source('../utils/plotSignature.R')
-source('../utils/getCategs.R')
-source('../utils/plotCoefficients.R')
+source('utils/prepareBinData.R')
+source('utils/evalExprOverlap.R')
+source('utils/evalGCOverlap.R')
+source('utils/qcut.R')
+source('utils/bins_sv_overlaps.R')
+source('utils/rs_gene_overlaps.R')
+source('utils/normalizeVector.R')
+source('utils/getBpGr.R')
+source('utils/performOverlaps.R')
+source('utils/getBpGr.R')
+source('utils/loadRepeats.R')
+source('utils/plotSignature.R')
+source('utils/getCategs.R')
+source('utils/plotCoefficients.R')
 # loads reference gene expression files
-source('../utils/loadGRs.R')
+source('utils/loadGRs.R')
 
-# tissue used for gene expression analysis
-expr_tissue <- 'BRCA'
+
 
 # this is where the results will be stored
 resultList <- list()
@@ -212,7 +215,7 @@ if (shuffle) {
         rightFlag <- !transloc & sides=='right'
         test.bedpe$start1[rightFlag] <- test.bedpe$start2[rightFlag] 
         test.bedpe$start2[rightFlag] <- test.bedpe$start2[rightFlag] + test.bedpe$length[rightFlag]
-
+    }
     test.bedpe <- subset(test.bedpe, start2 < (chr2.len-2*chr.margin))
     test.bedpe <- test.bedpe[order(test.bedpe$repliseq.new),]
 }
@@ -898,7 +901,3 @@ if (makePDFs) {
 }
 write.csv(t_mh_1d, file=paste0(result_folder,exp.name,'_mh_catalogue_1D.csv'),row.names=FALSE)
 # mh analysis end
-
-
-
-

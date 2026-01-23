@@ -26,7 +26,7 @@ if (interactive()) {
     size_min <- -1
     size_max <- 3e5
     max_sig <- 'Ref.Sig.R1'
-    sample_subset <- NULL
+    sample_subset <- 'CDK12'
     output_folder <- '../data/processed/'
 } else {
 
@@ -130,11 +130,11 @@ print(paste(nrow(test.samples.df.sinatures.abobec), 'samples after  filtering'))
 
 # mappability of the reference genome
 mapability <- read.table(mappability_fp)
-mapability.gr <- trim(reduce(GRanges(seqnames=Rle(mapability$V1),
-                                  ranges=IRanges(mapability$V2, mapability$V3),seqinfo= seqinfo(BSgenome.Hsapiens.UCSC.hg19))))
+mapability.gr <-GRanges(seqnames=Rle(mapability$V1),
+                                  ranges=IRanges(mapability$V2, mapability$V3),seqinfo= seqinfo(BSgenome.Hsapiens.UCSC.hg19))
+mapability.gr <- trim(reduce(mapability.gr))
 
 
-options(error = recover)
 
 apobec.mut.list <- list()
 mut.list<- list()

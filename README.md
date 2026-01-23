@@ -9,6 +9,29 @@ This repository contains analysis pipelines, notebooks, and utilities used to st
 
 ---
 
+## Example runs
+### 1. SV topography and replication features
+- cd src
+- R
+- source('src/run_sv_topography.R')
+- expected output: ../data/processed/RS1/, including .pdf plots, .csv files and .RData objects that characterize overlap of SVs with replication features.
+
+SVs are loaded from:
+../data/interim/sample.rearrs.RData
+Other reference files in ../data/interim are required.
+
+### 2. APOBEC strand asymmetry analysis
+- cd src
+- R
+- source('src/run_APOBEC_overlaps.R')
+- expected output: ../data/processed/PCAWG_duplication_-1_300000_Ref.Sig.R1_CDK12.RData
+
+Files required:
+SVs are loaded from:
+../data/interim/sample.rearrs.RData
+Point mutations, TimeR-processed: /home/dg204/park_dglodzik/TimeR_bb_all_sigs/
+Other reference files in ../data/interim are required.
+
 ## Repository structure
 
 ### 1. SV topography and replication features
