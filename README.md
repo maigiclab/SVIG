@@ -10,6 +10,29 @@ This repository contains analysis pipelines, notebooks, and utilities used to st
 ---
 
 ## Example runs
+
+### 0. Download the data and set up the environment.
+
+Intermediate data files required to reproduce all analyses are deposited on Zenodo:
+
+**Glodzik, D. (2026). Intermediate files for repository: maigiclab/SVIG (v1). Zenodo.**  
+https://doi.org/10.5281/zenodo.19401854
+
+Download and extract the archive into the repository root:
+```bash
+wget https://zenodo.org/records/19401854/files/svig_data.tar.gz
+tar -xzvf svig_data.tar.gz
+```
+This will create a `data/` directory inside the repository:
+
+
+R package dependencies are managed with `renv`. To restore the exact 
+package environment used in this study:
+```r
+install.packages("renv")
+renv::restore()
+```
+
 ### 1. SV topography and replication features
 - cd src
 - R
