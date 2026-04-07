@@ -11,7 +11,7 @@ This repository contains analysis pipelines, notebooks, and utilities used to st
 
 ## Example runs
 
-### 0. Download the data and set up the environment.
+### 0. Download the data and set up the environment
 
 Intermediate data files required to reproduce all analyses are deposited on Zenodo:
 
@@ -23,41 +23,55 @@ Download and extract the archive into the repository root:
 wget https://zenodo.org/records/19401854/files/svig_data.tar.gz
 tar -xzvf svig_data.tar.gz
 ```
-This will create a `data/` directory inside the repository:
+This will create a `data/` directory inside the repository.
 
-
-R package dependencies are managed with `renv`. To restore the exact 
-package environment used in this study:
+**R** package dependencies are managed with `renv` (`src/renv.lock`). To restore the exact package environment:
 ```r
 install.packages("renv")
 renv::restore()
 ```
 
-### 1. SV topography and replication features
-- cd src
-- R
-- source('src/run_sv_topography.R')
-- expected output: ../data/processed/RS1/, including .pdf plots, .csv files and .RData objects that characterize overlap of SVs with replication features.
+**Python** dependencies are listed in `pyproject.toml`. To install:
+```bash
+pip install .
+```
 
-SVs are loaded from:
-../data/interim/sample.rearrs.RData
-Other reference files in ../data/interim are required.
+Alternatively, a `Dockerfile` is provided with all dependencies pre-installed.
+
+### 1. SV topography and replication features
+```bash
+cd src
+```
+```r
+R
+source('src/run_sv_topography.R')
+```
+
+**Expected output:** `../data/processed/RS1/` — including `.pdf` plots, `.csv` files and `.RData` objects that characterize overlap of SVs with replication features.
+
+**SVs are loaded from:** `../data/interim/sample.rearrs.RData`
+
+Other reference files in `../data/interim` are required.
 
 ### 2. APOBEC strand asymmetry analysis
-- cd src
-- R
-- source('src/run_APOBEC_overlaps.R')
-- expected output: ../data/processed/PCAWG_duplication_-1_300000_Ref.Sig.R1_CDK12.RData
+```bash
+cd src
+```
+```r
+R
+source('src/run_APOBEC_overlaps.R')
+```
 
-Files required:
-SVs are loaded from:
-../data/interim/sample.rearrs.RData
-Point mutations, TimeR-processed: /home/dg204/park_dglodzik/TimeR_bb_all_sigs/
-Other reference files in ../data/interim are required.
+**Expected output:** `../data/processed/PCAWG_duplication_-1_300000_Ref.Sig.R1_CDK12.RData`
+
+**Files required:**
+- SVs loaded from: `../data/interim/sample.rearrs.RData`
+- Point mutations, TimeR-processed: `/home/dg204/park_dglodzik/TimeR_bb_all_sigs/`
+- Other reference files in `../data/interim` are required.
 
 ## Repository structure
 
-### 1. SV topography and replication features
+### A. SV topography and replication features
 Analysis of replication timing, origins, and fork directionality with respect to SV spans. PCAWG dataset; SV-signature-focused or genetic-alteration focused experiments.
 
 **Scripts**
@@ -70,7 +84,7 @@ Analysis of replication timing, origins, and fork directionality with respect to
 
 ---
 
-### 2. APOBEC strand asymmetry analysis
+### B. APOBEC strand asymmetry analysis
 Analysis of APOBEC mutagenesis strand bias at SV loci. PCAWG dataset; SV-signature-focused or genetic-alteration focused experiments.
 
 **Scripts**
@@ -85,7 +99,7 @@ Analysis of APOBEC mutagenesis strand bias at SV loci. PCAWG dataset; SV-signatu
 
 ---
 
-### 3. SV signatures in CCNE1 and CDK12 tumors
+### C. SV signatures in CCNE1 and CDK12 tumors
 Plots and comparative analyses of SV signatures in CCNE1- and CDK12-amplified tumors.
 
 **Notebooks**
@@ -93,7 +107,7 @@ Plots and comparative analyses of SV signatures in CCNE1- and CDK12-amplified tu
 
 ---
 
-### 4. SV catalogue construction
+### D. SV catalogue construction
 Generation of SV catalogues for downstream signature analysis.
 
 **Key function**
@@ -106,7 +120,7 @@ Generation of SV catalogues for downstream signature analysis.
 
 ---
 
-### 5. SV signature extraction
+### E. SV signature extraction
 Extraction of SV signatures from curated catalogues.
 
 **Scripts**
@@ -115,7 +129,7 @@ Extraction of SV signatures from curated catalogues.
 
 ---
 
-### 6. SV signature visualization and correction
+### F. SV signature visualization and correction
 Visualization and correction of SV signatures with respect to replication features.
 
 **Notebooks**
@@ -125,7 +139,7 @@ Visualization and correction of SV signatures with respect to replication featur
 
 ---
 
-### 7. SVIG classifier training
+### G. SVIG classifier training
 Training of the SVIG multi-class classifier.
 
 **Notebooks**

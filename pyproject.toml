@@ -15,7 +15,20 @@ classifiers = [
     "Programming Language :: Python :: 3",
     
 ]
-requires-python = "~=3.10.0"
+requires-python = ">=3.10"
+dependencies = [
+    "musical",
+    "numpy",
+    "pandas",
+    "matplotlib",
+    "seaborn",
+    "plotly",
+    "scipy",
+    "scikit-learn",
+    "xgboost",
+    "umap-learn",
+    "shap",
+]
 
 
 [tool.ruff]
