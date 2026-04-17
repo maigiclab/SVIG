@@ -61,15 +61,16 @@ RUN R -e "BiocManager::install(c( \
     'GenomicRanges', \
     'regioneR', \
     'Rsamtools', \
-    'rhdf5', \
-    'MutationTimeR' \
+    'rhdf5' \
   ), ask=FALSE, update=FALSE)"
 
-# ── R: signature.tools.lib from GitHub ───────────────────────────────────────
+# ── R: GitHub packages ────────────────────────────────────────────────────────
 RUN R -e "remotes::install_github( \
     'Nik-Zainal-Group/signature.tools.lib', \
     ref='0e6b9f5a7cf41ab6083e3b0edf24fc39a595847f', \
     upgrade='never')"
+
+RUN R -e "remotes::install_github('gerstung-lab/MutationTimeR', upgrade='never')"
 
 # ── Register R kernel with Jupyter ────────────────────────────────────────────
 RUN R -e "IRkernel::installspec(user=FALSE)"

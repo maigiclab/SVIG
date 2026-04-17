@@ -15,36 +15,41 @@ This repository contains analysis pipelines, notebooks, and utilities used to st
 
 Intermediate data files required to reproduce all analyses are deposited on Zenodo:
 
-**Glodzik, D. (2026). Intermediate files for repository: maigiclab/SVIG (v1). Zenodo.**  
-https://doi.org/10.5281/zenodo.19401854
+**Glodzik, D. (2026). Intermediate files for repository: maigiclab/SVIG (v2). Zenodo.**  
+https://doi.org/10.5281/zenodo.19401853
+
 
 Download and extract the archive into the repository root:
 ```bash
-wget https://zenodo.org/records/19401854/files/svig_data.tar.gz
+wget https://zenodo.org/records/19601623/files/svig_data.tar.gz?download=1
 tar -xzvf svig_data.tar.gz
 ```
 This will create a `data/` directory inside the repository.
 
-**R** package dependencies are managed with `renv` (`src/renv.lock`). To restore the exact package environment:
-```r
-install.packages("renv")
-renv::restore()
+A `Dockerfile` is provided with all R and Python dependencies listed.
+a pre-built Docker image is available on Docker Hub:                                                                    
+                                         
+```bash
+  docker pull dglodzik/svig
+  docker run -v $(pwd):/app -m 8g -it dglodzik/svig /bin/bash        
 ```
 
-**Python** dependencies are listed in `pyproject.toml`. To install:
+Additionally, **Python** dependencies are listed in `pyproject.toml`. To install:
 ```bash
 pip install .
 ```
+**R** package dependencies are listed in the Dockerfile. 
 
-Alternatively, a `Dockerfile` is provided with all dependencies pre-installed.
+
 
 ### 1. SV topography and replication features
 ```bash
 cd src
 ```
 ```r
+cd src
 R
-source('src/run_sv_topography.R')
+source('run_sv_topography.R')
 ```
 
 **Expected output:** `../data/processed/RS1/` — including `.pdf` plots, `.csv` files and `.RData` objects that characterize overlap of SVs with replication features.
@@ -59,7 +64,7 @@ cd src
 ```
 ```r
 R
-source('src/run_APOBEC_overlaps.R')
+source('run_APOBEC_overlaps.R')
 ```
 
 **Expected output:** `../data/processed/PCAWG_duplication_-1_300000_Ref.Sig.R1_CDK12.RData`

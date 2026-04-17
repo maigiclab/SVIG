@@ -10,7 +10,7 @@ library(MASS)
 library(signature.tools.lib)
 library(plyr)
 library(readxl)
-require(MutationTimeR) #
+#require(MutationTimeR) #
 library(reshape2)
 })    
 
@@ -57,14 +57,14 @@ margin.size <- 1e5 # size of the region around SVs
 loadTimeR <- TRUE
 
 # inputs:
-pcawg_muts_folder <- '/home/dg204/park_data/ICGC/SNV_indel_calls/final_consensus_12oct_passonly/snv_mnv/'
-sample_metadata_fp <- '../data/interim//WGS.metadata.txt'
-sv_data_fp <- '../data/interim//sample.rearrs.RData'
+pcawg_muts_folder <- '../data/interim/ICGC/SNV_indel_calls/final_consensus_12oct_passonly/snv_mnv/'
+sample_metadata_fp <- '../data/interim/WGS.metadata.txt'
+sv_data_fp <- '../data/interim/sample.rearrs.RData'
 # TimeR result path
 # this is missing the context field
 # we will be loading sample files in /data/*.RData folder, which come from TimeR
 # see projects/brca_timing/src/script_hrd_timer_pcawg.sh
-muts_timer_path <- "/home/dg204/park_dglodzik/TimeR_bb_all_sigs/"
+muts_timer_path <- "../data/interim/TimeR_bb_all_sigs/"
 sbs_signatures_pcawg_fp <- '../data/interim/SigProfilier_PCAWG_WGS_probabilities_SBS.csv'
 sbs_signatures_pcawg_exposures_fp <- '../data/interim/PCAWG_sigProfiler_SBS_signatures_in_samples.csv'
 sv_sigs_fp <- '../data/interim/43018_2020_27_MOESM3_ESM.xlsx'

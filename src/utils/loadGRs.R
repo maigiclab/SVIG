@@ -1,26 +1,24 @@
 # replication timing data
-replis.gr <- toGRanges('~/projects/rsignatures/data//external/BASIS/Repliseq_data//RepliTime/MCF7_data//MCF7_RepliSeq.bedGraph')
+replis.gr <- toGRanges('../data/external/MCF7_RepliSeq.bedGraph')
 replis.gr <- replis.gr[lengths(replis.gr)<=1001]
 
-#rfd_fn <- '~/park_dglodzik/OK-Seq/HeLa_S3/Hela.EdC.Combined_OkaSeq.RFD.bw'
-#rfd.gr <- rtracklayer::import(rfd_fn, format = "bigWig")
-rfd_fn <- '~/park_dglodzik/OK-Seq/HeLa_MRL2/Hela.EdC.Combined_OkaSeq.RFD.bw'
+rfd_fn <- '../data/external/Hela.EdC.Combined_OkaSeq.RFD.bw'
 rfd.gr <- rtracklayer::import(rfd_fn, format = "bigWig")
 rfd.gr <- rfd.gr[rfd.gr$score!=-2]
 
 # initiation and termination zones
-iz_fn <- '~/park_dglodzik/OK-Seq/HeLa_MRL2/HeLa_hmm_HMMsegments_IZ.bed'
+iz_fn <- '../data/external/HeLa_hmm_HMMsegments_IZ.bed'
 iz.gr <- toGRanges(iz_fn)
-tz_fn <- '~/park_dglodzik/OK-Seq/HeLa_MRL2/HeLa_hmm_HMMsegments_TZ.bed'
+tz_fn <- '../data/external/HeLa_hmm_HMMsegments_TZ.bed'
 tz.gr <- toGRanges(tz_fn)
 total_footprint_iz <- sum(width(iz.gr))
 total_footprint_tz <- sum(width(tz.gr))
 
-load('~/projects//rsignatures/data/processed/disease.RData')
+load('../data/external/disease.RData')
 dim(disease.m)
 
 
-gene.table.fn <- '~/park_dglodzik/repos/hotspots/data/genes.table.csv'
+gene.table.fn <- '../data/external/genes.table.csv'
 genes.table <- as.data.frame(read.csv(gene.table.fn, row.names=NULL)[,2:7])
 disease.df <- as.data.frame(disease.m)
 disease.df$ensid <- gsub('\\..*', '', rownames(disease.m))
