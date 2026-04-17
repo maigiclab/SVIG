@@ -71,7 +71,7 @@ source('run_APOBEC_overlaps.R')
 
 **Files required:**
 - SVs loaded from: `../data/interim/sample.rearrs.RData`
-- Point mutations, TimeR-processed: `/home/dg204/park_dglodzik/TimeR_bb_all_sigs/`
+- Point mutations, TimeR-processed: `../data/interim/TimeR_bb_all_sigs/`
 - Other reference files in `../data/interim` are required.
 
 ## Repository structure
