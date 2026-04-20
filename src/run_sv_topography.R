@@ -114,14 +114,14 @@ sample_metadata <- subset(sample_metadata, !duplicated(icgc_specimen_id))
 rownames(sample_metadata) <- sample_metadata$aliquot_id
 
 # load the replication timing data
-replis.gr <- toGRanges('../data/interim/MCF7_RepliSeq.bedGraph')
+replis.gr <- toGRanges('../data/external/MCF7_RepliSeq.bedGraph')
 replis.gr <- replis.gr[lengths(replis.gr)<=1001]
 replis.gr$chr.len<- seqlengths(BSgenome.Hsapiens.UCSC.hg19)[as.character(seqnames(replis.gr))]
 replis.gr<-replis.gr[(start(replis.gr)>chr.margin) & ((replis.gr$chr.len - end(replis.gr))>chr.margin)]
 replis.gr$quantile <- qcut(replis.gr$V4, 10)
 
 # load replication origins, SNS-seq
-core.origins <- read.table('../data/interim/akerman_core_origins_hg19.bed', sep='\t')
+core.origins <- read.table('../data/external/akerman_core_origins_hg19.bed', sep='\t')
 core.origins$midopoint <- rowMeans(core.origins[,c('V2', 'V3')])
 common.origins.gr <- GRanges(seqnames=Rle(core.origins$V1),
                   ranges=IRanges(core.origins$midopoint, core.origins$midopoint))
@@ -527,7 +527,7 @@ if (makePDFs) {
 # gene expression analysis
 # load disease by gene average expression matrix, PCAWG derived
 # expr.m, disease.m
-load('../data/interim/disease.RData')
+library(pryr)
 cancer_types_tab <- table(gsub('-.*', '', test.bedpe$dcc_project_code))
 cancer_types_tab <- cancer_types_tab[names(cancer_types_tab) %in% colnames(disease.m)]
 if (length(cancer_types_tab)>0) {
