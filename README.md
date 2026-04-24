@@ -45,10 +45,9 @@ pip install .
 ### 1. SV topography and replication features
 ```bash
 cd src
+R
 ```
 ```r
-cd src
-R
 source('run_sv_topography.R')
 ```
 
