@@ -15,8 +15,8 @@
 
 if (interactive()) {
     # for debugging
-    exp.name <- 'RS1'
-    filter_str <- "max.Ref.Sig=='Ref.Sig.R1'  & (is.clustered==FALSE)"
+    exp.name <- 'RS1 CDK12'
+    filter_str <- "sample %in% curated_cdk12 & label2=='_tds' & is.clustered==FALSE  & length < 5e6 & length >1e5 & max.Ref.Sig=='Ref.Sig.R1'"
     shuffle <- FALSE
     shuffleMode <- 'simple'
     doRegression <- FALSE
@@ -528,6 +528,7 @@ if (makePDFs) {
 # load disease by gene average expression matrix, PCAWG derived
 # expr.m, disease.m
 library(pryr)
+load('../data/external/disease.RData')
 cancer_types_tab <- table(gsub('-.*', '', test.bedpe$dcc_project_code))
 cancer_types_tab <- cancer_types_tab[names(cancer_types_tab) %in% colnames(disease.m)]
 if (length(cancer_types_tab)>0) {

@@ -31,10 +31,10 @@ a pre-built Docker image is available on Docker Hub:
                                          
 ```bash
   docker pull dglodzik/svig
-  docker run -v $(pwd):/app -m 8g -it dglodzik/svig /bin/bash        
+  docker run -v $(pwd):/app -m 2g -it dglodzik/svig /bin/bash        
 ```
 
-Additionally, **Python** dependencies are listed in `pyproject.toml`. To install:
+Alternatively, **Python** dependencies are listed in `pyproject.toml`. To install:
 ```bash
 pip install .
 ```
@@ -52,7 +52,7 @@ R
 source('run_sv_topography.R')
 ```
 
-**Expected output:** `../data/processed/RS1/` — including `.pdf` plots, `.csv` files and `.RData` objects that characterize overlap of SVs with replication features.
+**Expected output:** `../data/processed/RS1\ CDK12/` — including `.pdf` plots, `.csv` files and `.RData` objects that characterize overlap of SVs with replication features.
 
 **SVs are loaded from:** `../data/interim/sample.rearrs.RData`
 
@@ -152,7 +152,7 @@ Training of the SVIG multi-class classifier.
 
 ---
 
-### 8. Additional statistics
+### H. Additional statistics
 Other analyses and statistics used in the manuscript.
 
 **Notebooks**
