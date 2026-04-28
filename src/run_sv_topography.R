@@ -527,7 +527,6 @@ if (makePDFs) {
 # gene expression analysis
 # load disease by gene average expression matrix, PCAWG derived
 # expr.m, disease.m
-library(pryr)
 load('../data/external/disease.RData')
 cancer_types_tab <- table(gsub('-.*', '', test.bedpe$dcc_project_code))
 cancer_types_tab <- cancer_types_tab[names(cancer_types_tab) %in% colnames(disease.m)]

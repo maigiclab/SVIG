@@ -21,7 +21,7 @@ https://doi.org/10.5281/zenodo.19401853
 
 Download and extract the archive into the repository root:
 ```bash
-wget https://zenodo.org/records/19601623/files/svig_data.tar.gz?download=1
+wget -O svig_data.tar.gz "https://zenodo.org/records/19601623/files/svig_data.tar.gz?download=1"
 tar -xzvf svig_data.tar.gz
 ```
 This will create a `data/` directory inside the repository.
