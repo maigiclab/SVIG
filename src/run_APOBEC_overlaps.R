@@ -10,7 +10,7 @@ library(MASS)
 library(signature.tools.lib)
 library(plyr)
 library(readxl)
-#require(MutationTimeR) #
+require(MutationTimeR) #
 library(reshape2)
 })    
 
